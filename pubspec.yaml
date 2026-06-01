@@ -1,0 +1,69 @@
+name: servired_app
+description: SERVIRED - Plataforma digital de juegos, pagos y servicios
+version: 1.0.0+1
+publish_to: none
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Estado - BLoC/Cubit (SPEC-FE-001 §9.1)
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+
+  # HTTP - Capa de red con interceptores (SPEC-FE-001 §9.2 core/network)
+  dio: ^5.4.3+1
+
+  # Navegación
+  go_router: ^13.2.4
+
+  # Variables de entorno (.env.dev / .env.uat / .env.prod)
+  flutter_dotenv: ^5.1.0
+
+  # Inyección de dependencias
+  get_it: ^7.6.7
+
+  # Almacenamiento seguro de tokens JWT
+  flutter_secure_storage: ^9.2.2
+
+  # Preferencias locales (no sensibles)
+  shared_preferences: ^2.3.0
+
+  # Internacionalización y formateo de fechas
+  intl: ^0.20.2
+
+  # Tipografías Figma: Poppins, Inter, Source Sans Pro, Nunito
+  google_fonts: ^6.2.1
+
+  # Renderizado de SVG (logo Gane y otros assets vectoriales)
+  flutter_svg: ^2.0.10+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  # Testing de BLoC/Cubit
+  bloc_test: ^9.1.7
+
+  # Mocks para testing
+  mocktail: ^1.0.4
+
+  # Linting
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env.dev
+    - .env.uat
+    - .env.prod
+    - assets/images/
+    - assets/icons/
