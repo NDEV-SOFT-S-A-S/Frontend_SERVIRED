@@ -148,10 +148,15 @@ class _JuegosRow extends StatelessWidget {
     );
   }
 
-  // Solo el juego en índice 1 (El Dominguero Millonario) tiene navegación
   VoidCallback? _tapFor(BuildContext context, int globalIndex) {
     if (globalIndex == 1) {
-      return () => context.go(AppRoutes.dominguero);
+      return () => context.push(AppRoutes.dominguero);
+    }
+    if (globalIndex == 2) {
+      return () => context.push(AppRoutes.pagaTodo);
+    }
+    if (globalIndex == 9) {
+      return () => context.push(AppRoutes.superwin);
     }
     return null;
   }

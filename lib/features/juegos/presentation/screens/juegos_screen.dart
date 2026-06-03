@@ -226,7 +226,13 @@ class _JuegosGrid extends StatelessWidget {
                       // Solo El Dominguero Millonario (índice 1) navega a su pantalla
                       onTap: idx == 1
                           ? () => context.go(AppRoutes.dominguero)
-                          : null,
+                          : idx == 6
+                              ? () => context.go(AppRoutes.chanceTradicional)
+                              : idx == 8
+                                  ? () => context.go(AppRoutes.chanceMillonario)
+                                  : idx == 9
+                                      ? () => context.go(AppRoutes.superwin)
+                                      : null,
                     ),
                   ),
                 ),

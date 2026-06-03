@@ -95,13 +95,13 @@ class _FooterColumns extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: _Col1General()),
+          Flexible(child: _Col1General()),
           const _VerticalDivider(),
-          Expanded(child: _Col2Empresa()),
+          Flexible(child: _Col2Empresa()),
           const _VerticalDivider(),
-          Expanded(child: _Col3Fundacion()),
+          Flexible(child: _Col3Fundacion()),
           const _VerticalDivider(),
-          Expanded(child: _Col4EticaLogos()),
+          Flexible(child: _Col4EticaLogos()),
         ],
       ),
     );

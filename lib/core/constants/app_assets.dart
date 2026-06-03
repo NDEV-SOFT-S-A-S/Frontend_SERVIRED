@@ -70,4 +70,34 @@ abstract final class AppAssets {
   // Variantes blancas exportadas desde Figma (asset real del diseño)
   static const String logoVigilado  = 'assets/images/logo_vigilado_supersalud_white.png';
   static const String logoColjuegos = 'assets/images/coljuegos_logo_white.png';
+
+  // ── Superwin ──────────────────────────────────────────────────────────────
+  static const String bannerSuperwin = 'assets/images/banner_juegos_superwin.png';
+  static const String imagenSuperwin = 'assets/images/imagen_1_superwin.png';
+
+  // ── Chance Millonario (HU-CM001) ─────────────────────────────────────────
+  // Mismo archivo que juegoImg9 — "Chance Millonario Sorprendente"
+  static const String bannerChanceMillonario = 'assets/images/juego_9.png';
+
+  // ── Dominguero ────────────────────────────────────────────────────────────
+  static const String bannerDominguero  = 'assets/images/banner_dominguero.png';
+  static const String refreshCircular   = 'assets/images/refresh-circular.svg';
+
+  // ── Chance Tradicional (HU-PD-003) ───────────────────────────────────────
+  // Figma node 762:3908 — banner ChanCe (746×150)
+  static const String frameChanceTradicional = 'assets/images/frame_chance_tradicional.png';
+
+  // Logos de loterías del Chance — Figma "Loterias Juego" (87×87 cada una)
+  static const String logoLoteriaMeta          = 'assets/images/logo_loteria_meta.png';
+  static const String logoLoteriaQuindio       = 'assets/images/logo_loteria_quindio.png';
+  static const String logoLoteriaCauca         = 'assets/images/logo_loteria_cauca.png';
+  static const String logoLoteriaMedellin      = 'assets/images/logo_loteria_medellin.png';
+  static const String logoLoteriaExtraMedellin = 'assets/images/logo_loteria_extra_medellin.png';
+  static const String logoLoteriaManizales     = 'assets/images/logo_loteria_manizales.png';
+  static const String logoLoteriaCundinamarca  = 'assets/images/logo_loteria_cundinamarca.png';
+  static const String logoLoteriaBoyaca        = 'assets/images/logo_loteria_boyaca.png';
+  static const String logoLoteriaBogota        = 'assets/images/logo_loteria_bogota.png';
+  static const String logoLoteriaTolima        = 'assets/images/logo_loteria_tolima.png';
+  static const String logoLoteriaHuila         = 'assets/images/logo_loteria_huila.png';
+  static const String logoLoteriaSantander     = 'assets/images/logo_loteria_santander.png';
 }

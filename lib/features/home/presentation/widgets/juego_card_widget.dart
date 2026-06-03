@@ -96,29 +96,32 @@ class _JuegoCardWidgetState extends State<JuegoCardWidget> {
                       duration: const Duration(milliseconds: 200),
                       opacity: _hovered ? 1.0 : 0.0,
                       child: Center(
-                        child: Container(
-                          width: 120,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            // Verde acción de Figma
-                            color: const Color(0xFF2DB35B),
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x40000000),
-                                offset: Offset(0, 4),
-                                blurRadius: 8,
+                        child: GestureDetector(
+                          onTap: widget.onTap,
+                          child: Container(
+                            width: 120,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              // Verde acción de Figma
+                              color: const Color(0xFF2DB35B),
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x40000000),
+                                  offset: Offset(0, 4),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Jugar',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.neutralWhite,
+                                height: 1.0,
                               ),
-                            ],
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Jugar',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.neutralWhite,
-                              height: 1.0,
                             ),
                           ),
                         ),
