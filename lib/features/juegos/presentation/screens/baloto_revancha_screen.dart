@@ -1,3 +1,8 @@
+// HU-BAL001 – Baloto
+// Producto: Baloto / Baloto Revancha
+// Módulo: Aplicación Móvil
+// Versión: 1.0.0.0 – 24/04/2026
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -14,14 +19,34 @@ import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../auth/presentation/screens/otp_verification_screen.dart';
 import '../../../home/presentation/widgets/navbar_widget.dart';
 
-// ── Constantes de negocio ─────────────────────────────────────────────────────
+// ── Constantes de negocio HU-BAL001 ──────────────────────────────────────────
+// RN: Baloto $6.000 · Revancha $3.000 adicionales · total con Revancha $9.000
+// Días de sorteo: lunes (1), miércoles (3), sábado (6)
+// Balotas: 5 únicas de 1-43 · Superbalota: 1 de 1-16
 
+const int _kPrecioBaloto = 6000;
+const int _kPrecioRevancha = 3000;
 const int _kBalotaMax = 43;
 const int _kSuperbalotaMax = 16;
 const int _kBalotasRequeridas = 5;
-const int _kPrecioBaloto = 6000;
-const int _kPrecioRevancha = 3000;
-const int _kMaxSorteos = 9;
+const int _kMaxSorteosVenta = 9;
+
+// Acumulados base (HU-BAL001) — se reemplaza por API cuando esté disponible
+const int _kAcumuladoBalotoBase = 4000000000; // $4.000 millones
+const int _kAcumuladoRevanchaBase = 2000000000; // $2.000 millones
+
+// Días de sorteo ISO weekday: 1=lun, 3=mié, 6=sáb
+const List<int> _kDiasSorteo = [1, 3, 6];
+const List<String> _kNombresDias = [
+  '',
+  'Lun',
+  'Mar',
+  'Mié',
+  'Jue',
+  'Vie',
+  'Sáb',
+  'Dom'
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,17 +61,56 @@ String _fmtCop(int amount) {
   return buf.toString();
 }
 
-enum _SelectionMode { manual, automatica }
+String _fmtMillones(int amount) {
+  if (amount >= 1000000000) {
+    final bil = amount / 1000000000;
+    final fmt =
+        bil == bil.truncate() ? '${bil.truncate()}' : bil.toStringAsFixed(1);
+    return '\$$fmt mil millones';
+  }
+  if (amount >= 1000000) {
+    final mil = amount / 1000000;
+    final fmt =
+        mil == mil.truncate() ? '${mil.truncate()}' : mil.toStringAsFixed(0);
+    return '\$$fmt millones';
+  }
+  return _fmtCop(amount);
+}
 
-// ── Plan de premios (referencia ONJ / Coljuegos) ──────────────────────────────
+/// Genera los próximos N sorteos a partir de hoy (lunes, miércoles, sábado).
+List<DateTime> _proximosSorteos(int cantidad) {
+  final sorteos = <DateTime>[];
+  var dia = DateTime.now();
+  while (sorteos.length < cantidad) {
+    dia = dia.add(const Duration(days: 1));
+    if (_kDiasSorteo.contains(dia.weekday)) {
+      sorteos.add(dia);
+    }
+  }
+  return sorteos;
+}
+
+String _labelSorteo(DateTime d, int idx) {
+  final diaNombre = _kNombresDias[d.weekday];
+  return '$diaNombre ${d.day}/${d.month}';
+}
+
+// ── Estado de geo / compra ────────────────────────────────────────────────────
+
+enum _GeoEstado { pendiente, activa, bloqueada }
+
+enum _CompraEstado { idle, procesando, exitosa, error }
+
+// ── Plan de premios (paramutual — HU-BAL001) ─────────────────────────────────
+// Los valores exactos dependen del acumulado; se muestran como referencia.
 
 const _kPlanPremios = <({String combo, String descripcion, String valor})>[
   (combo: '5+S', descripcion: '5 balotas + superbalota', valor: 'Acumulado'),
-  (combo: '5', descripcion: '5 balotas', valor: '\$3.000.000'),
-  (combo: '4+S', descripcion: '4 balotas + superbalota', valor: '\$200.000'),
-  (combo: '4', descripcion: '4 balotas', valor: '\$50.000'),
-  (combo: '3+S', descripcion: '3 balotas + superbalota', valor: '\$20.000'),
-  (combo: '3', descripcion: '3 balotas', valor: '\$4.000'),
+  (combo: '5', descripcion: '5 balotas', valor: 'Variable'),
+  (combo: '4+S', descripcion: '4 balotas + superbalota', valor: 'Variable'),
+  (combo: '4', descripcion: '4 balotas', valor: 'Variable'),
+  (combo: '3+S', descripcion: '3 balotas + superbalota', valor: 'Variable'),
+  (combo: '3', descripcion: '3 balotas', valor: 'Variable'),
 ];
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -59,15 +123,48 @@ class BalotoRevanchaScreen extends StatefulWidget {
 }
 
 class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
-  _SelectionMode _modo = _SelectionMode.manual;
+  // ── Estado de selección ──────────────────────────────────────────────────
+  bool _modoAutomatico = false;
   final Set<int> _balotas = {};
   int? _superbalota;
   bool _conRevancha = false;
-  int _sorteos = 1;
 
+  // ── Sorteos disponibles (HU-BAL001 RN: lun/mié/sáb) ────────────────────
+  late final List<DateTime> _sorteosDisponibles;
+  final Set<int> _sorteosSeleccionados =
+      {}; // índices dentro de _sorteosDisponibles
+
+  // ── Estado geo / compra ─────────────────────────────────────────────────
+  _GeoEstado _geoEstado = _GeoEstado.pendiente;
+  _CompraEstado _compraEstado = _CompraEstado.idle;
+  String? _ticketNumero;
+
+  // ── Acumulados vigentes (stub — reemplazar con API ONJ) ─────────────────
+  int _acumuladoBaloto = _kAcumuladoBalotoBase;
+  int _acumuladoRevancha = _kAcumuladoRevanchaBase;
+
+  // ── Errores de validación ────────────────────────────────────────────────
   String? _errorBalotas;
   String? _errorSuperbalota;
-  bool _confirmado = false;
+  String? _errorSorteo;
+
+  bool _confirmacionVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sorteosDisponibles = _proximosSorteos(_kMaxSorteosVenta);
+    _iniciarGeovalidacion();
+  }
+
+  // ── Georreferenciación (HU-BAL001 E6) ────────────────────────────────────
+  // TODO: reemplazar con plugin de geolocalización real (geolocator / permission_handler)
+  void _iniciarGeovalidacion() {
+    Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      setState(() => _geoEstado = _GeoEstado.activa);
+    });
+  }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -76,11 +173,19 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     return loggedIn ? 120.0 : 104.0;
   }
 
+  int get _cantidadSorteos =>
+      _sorteosSeleccionados.isEmpty ? 1 : _sorteosSeleccionados.length;
+
   int get _totalPagar =>
-      (_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)) * _sorteos;
+      (_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)) *
+      _cantidadSorteos;
 
   bool get _apuestaCompleta =>
-      _balotas.length == _kBalotasRequeridas && _superbalota != null;
+      _balotas.length == _kBalotasRequeridas &&
+      _superbalota != null &&
+      _cantidadSorteos >= 1;
+
+  // ── Lógica de negocio ────────────────────────────────────────────────────
 
   void _toggleBalota(int n) {
     setState(() {
@@ -89,8 +194,9 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
         _errorBalotas = null;
       } else {
         if (_balotas.length >= _kBalotasRequeridas) {
+          // E2: no permitir más de 5 balotas (HU-BAL001)
           _errorBalotas =
-              'Solo puedes seleccionar $_kBalotasRequeridas balotas';
+              'Ya seleccionaste $_kBalotasRequeridas balotas. Deselecciona una para cambiar.';
           return;
         }
         _balotas.add(n);
@@ -103,6 +209,17 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     setState(() {
       _superbalota = _superbalota == n ? null : n;
       _errorSuperbalota = null;
+    });
+  }
+
+  void _toggleSorteo(int idx) {
+    setState(() {
+      if (_sorteosSeleccionados.contains(idx)) {
+        _sorteosSeleccionados.remove(idx);
+      } else {
+        _sorteosSeleccionados.add(idx);
+      }
+      _errorSorteo = null;
     });
   }
 
@@ -121,38 +238,104 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     });
   }
 
+  // Limpiar (HU-BAL001 botón Limpiar)
   void _limpiar() {
     setState(() {
       _balotas.clear();
       _superbalota = null;
       _conRevancha = false;
-      _sorteos = 1;
+      _sorteosSeleccionados.clear();
       _errorBalotas = null;
       _errorSuperbalota = null;
-      _confirmado = false;
-      _modo = _SelectionMode.manual;
+      _errorSorteo = null;
+      _modoAutomatico = false;
+      _confirmacionVisible = false;
+      _compraEstado = _CompraEstado.idle;
+      _ticketNumero = null;
     });
+  }
+
+  // Cancelar (HU-BAL001 botón Cancelar — regresa sin registrar)
+  void _cancelar(BuildContext ctx) {
+    if (Navigator.canPop(ctx)) {
+      Navigator.pop(ctx);
+    } else {
+      ctx.go(AppRoutes.juegos);
+    }
   }
 
   bool _validar() {
     bool ok = true;
     setState(() {
       _errorBalotas = _balotas.length != _kBalotasRequeridas
-          ? 'Debes seleccionar exactamente $_kBalotasRequeridas balotas'
+          ? 'Debes seleccionar exactamente $_kBalotasRequeridas balotas (1-$_kBalotaMax)'
           : null;
-      _errorSuperbalota =
-          _superbalota == null ? 'Debes seleccionar la superbalota' : null;
+      _errorSuperbalota = _superbalota == null
+          ? 'Debes seleccionar la superbalota (1-$_kSuperbalotaMax)'
+          : null;
       ok = _errorBalotas == null && _errorSuperbalota == null;
     });
     return ok;
   }
 
-  void _anadirAlCarrito() {
+  // Avanzar a confirmación (HU-BAL001 paso 11-12)
+  void _continuarAConfirmacion() {
+    if (_geoEstado == _GeoEstado.bloqueada) {
+      _mostrarGeoError();
+      return;
+    }
     if (!_validar()) return;
-    setState(() => _confirmado = true);
+    setState(() => _confirmacionVisible = true);
   }
 
-  // ── Modal de login ───────────────────────────────────────────────────────
+  // Procesar compra (HU-BAL001 paso 13-14)
+  Future<void> _confirmarCompra() async {
+    setState(() {
+      _compraEstado = _CompraEstado.procesando;
+    });
+    // TODO: Integrar con API transaccional ONJ/Baloto
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    // Simulación exitosa — reemplazar con respuesta real del servicio
+    setState(() {
+      _compraEstado = _CompraEstado.exitosa;
+      _ticketNumero =
+          'BAL-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+    });
+  }
+
+  void _mostrarGeoError() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Ubicación requerida',
+          style: GoogleFonts.inter(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0C2577)),
+        ),
+        content: Text(
+          'La venta de Baloto solo está disponible en zonas autorizadas. '
+          'Por favor, activa la geolocalización y verifica que te encuentras en un área permitida.',
+          style: GoogleFonts.inter(
+              fontSize: 14, color: const Color(0xFF4B5563), height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Entendido',
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF0C2577))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Login modal ──────────────────────────────────────────────────────────
 
   void _showLoginModal(BuildContext ctx) {
     if (MediaQuery.sizeOf(ctx).width < 600) {
@@ -211,16 +394,21 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             onTap: () => context.go(AppRoutes.juegos),
           ),
           _NavIcon(
-              icon: Icons.shopping_cart_outlined,
-              label: 'Carrito',
-              onTap: () {}),
-          _NavIcon(icon: Icons.person_outline, label: 'Perfil', onTap: () {}),
+            icon: Icons.shopping_cart_outlined,
+            label: 'Carrito',
+            onTap: () {},
+          ),
+          _NavIcon(
+            icon: Icons.person_outline,
+            label: 'Perfil',
+            onTap: () {},
+          ),
         ],
       ),
     );
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
+  // ── Build principal ──────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -246,10 +434,8 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
                     SizedBox(height: navH),
                     if (!loggedIn)
                       _buildAuthRequired(context)
-                    else if (_confirmado)
-                      _buildConfirmacion(isMobile)
                     else
-                      _buildContent(isMobile),
+                      _buildBodyPrincipal(context, isMobile),
                     const SizedBox(height: 48),
                   ],
                 ),
@@ -272,6 +458,59 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildBodyPrincipal(BuildContext context, bool isMobile) {
+    // E4: sin sorteos disponibles
+    if (_sorteosDisponibles.isEmpty) {
+      return _buildSinSorteos();
+    }
+    // E6: geo bloqueada (se muestra banner pero bloquea compra)
+    final padding = isMobile
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 16)
+        : const EdgeInsets.symmetric(horizontal: 24, vertical: 24);
+
+    if (_compraEstado == _CompraEstado.exitosa && _ticketNumero != null) {
+      return Padding(
+        padding: padding,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: _buildCompraExitosa(),
+          ),
+        ),
+      );
+    }
+
+    if (_confirmacionVisible) {
+      return Padding(
+        padding: padding,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: _buildConfirmacion(context),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: padding,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: Column(
+            children: [
+              _buildCardPrincipal(context),
+              const SizedBox(height: 16),
+              _buildApuestasAvanzadasCard(),
+              const SizedBox(height: 16),
+              _buildPlanPremios(),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -306,7 +545,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Inicia sesión para jugar',
+                'Inicia sesión para jugar Baloto',
                 style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -318,10 +557,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
               Text(
                 'Debes estar autenticado para realizar apuestas en Baloto Revancha.',
                 style: GoogleFonts.inter(
-                  fontSize: 15,
-                  color: const Color(0xFF4B5563),
-                  height: 1.5,
-                ),
+                    fontSize: 15, color: const Color(0xFF4B5563), height: 1.5),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -339,10 +575,9 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
                   child: Text(
                     'Iniciar sesión',
                     style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white),
                   ),
                 ),
               ),
@@ -353,23 +588,40 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     );
   }
 
-  // ── Contenido principal ───────────────────────────────────────────────────
+  // ── E4: sin sorteos disponibles ───────────────────────────────────────────
 
-  Widget _buildContent(bool isMobile) {
-    final padding = isMobile
-        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 16)
-        : const EdgeInsets.symmetric(horizontal: 24, vertical: 24);
-
-    return Padding(
-      padding: padding,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
+  Widget _buildSinSorteos() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 420),
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _buildFormCard(),
+              const Icon(Icons.event_busy, size: 56, color: Color(0xFF9CA3AF)),
               const SizedBox(height: 16),
-              _buildApuestasAvanzadasCard(),
+              Text(
+                'Sin sorteos disponibles',
+                style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0C2577)),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'No existen sorteos disponibles para venta en este momento. '
+                'Los sorteos se realizan los lunes, miércoles y sábados.',
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: const Color(0xFF4B5563), height: 1.5),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
@@ -377,9 +629,9 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     );
   }
 
-  // ── Card de selección ─────────────────────────────────────────────────────
+  // ── Card principal del formulario ─────────────────────────────────────────
 
-  Widget _buildFormCard() {
+  Widget _buildCardPrincipal(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -390,18 +642,30 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Banner con logo
           _buildBanner(),
+          const SizedBox(height: 12),
+          // Sección acumulados + días de sorteo (HU-BAL001)
+          _buildInfoJuego(),
           const SizedBox(height: 16),
-          _buildModoToggle(),
+          // Alerta geo si está pendiente
+          if (_geoEstado == _GeoEstado.bloqueada) _buildGeoBloqueadaBanner(),
+          // Sorteos (HU-BAL001 paso 3-4)
+          _buildPasoSorteos(),
           const SizedBox(height: 16),
-          if (_modo == _SelectionMode.manual)
-            _buildSeccionManual()
-          else
-            _buildSeccionAutomatica(),
+          const _Divisor(),
+          const SizedBox(height: 16),
+          // Selección de números (HU-BAL001 paso 5-8)
+          _buildPasoNumeros(),
+          const SizedBox(height: 20),
+          // Botones principales (HU-BAL001)
+          _buildBotonesAccion(context),
         ],
       ),
     );
   }
+
+  // ── Banner ────────────────────────────────────────────────────────────────
 
   Widget _buildBanner() {
     return ClipRRect(
@@ -422,9 +686,9 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
           ),
           alignment: Alignment.center,
           child: Text(
-            'BALOTO\nREVANCHA!',
+            'BALOTO  REVANCHA!',
             style: GoogleFonts.inter(
-              fontSize: 30,
+              fontSize: 26,
               fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: 2,
@@ -436,10 +700,184 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     );
   }
 
+  // ── Información del juego — HU-BAL001 paso 2 ─────────────────────────────
+  // Muestra: valor Baloto, valor Revancha, días de sorteo, acumulados vigentes
+
+  Widget _buildInfoJuego() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F4FF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFBFD0FF)),
+      ),
+      child: Column(
+        children: [
+          // Fila de valores
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _InfoChip(
+                label: 'Baloto',
+                valor: _fmtCop(_kPrecioBaloto),
+                color: const Color(0xFF0C2577),
+              ),
+              Container(width: 1, height: 36, color: const Color(0xFFBFD0FF)),
+              _InfoChip(
+                label: 'Revancha',
+                valor: '+ ${_fmtCop(_kPrecioRevancha)}',
+                color: const Color(0xFF1372AE),
+              ),
+              Container(width: 1, height: 36, color: const Color(0xFFBFD0FF)),
+              _InfoChip(
+                label: 'Con Revancha',
+                valor: _fmtCop(_kPrecioBaloto + _kPrecioRevancha),
+                color: const Color(0xFF43B75D),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Días de sorteo
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.calendar_today_outlined,
+                  size: 14, color: Color(0xFF6B7280)),
+              const SizedBox(width: 4),
+              Text(
+                'Sorteos: Lunes · Miércoles · Sábado',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF4B5563),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Acumulados vigentes (HU-BAL001 RN: consultar desde fuente oficial)
+          Row(
+            children: [
+              Expanded(
+                child: _AcumuladoCard(
+                  titulo: 'Acumulado Baloto',
+                  valor: _fmtMillones(_acumuladoBaloto),
+                  color: const Color(0xFF0C2577),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _AcumuladoCard(
+                  titulo: 'Acumulado Revancha',
+                  valor: _fmtMillones(_acumuladoRevancha),
+                  color: const Color(0xFF1372AE),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Banner geo bloqueada (E6) ─────────────────────────────────────────────
+
+  Widget _buildGeoBloqueadaBanner() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFCA5A5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.location_off, color: Color(0xFFDC2626), size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Geolocalización bloqueada. La venta de Baloto solo está disponible en zonas autorizadas.',
+              style: GoogleFonts.inter(
+                  fontSize: 12, color: const Color(0xFF991B1B), height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Paso sorteos — HU-BAL001 pasos 3-4 ───────────────────────────────────
+
+  Widget _buildPasoSorteos() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PasoLabel(
+          numero: '1',
+          texto: 'Selecciona el sorteo o sorteos en que deseas participar',
+        ),
+        const SizedBox(height: 10),
+        // Próximo sorteo siempre visible como opción rápida
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: List.generate(_sorteosDisponibles.length, (i) {
+            final d = _sorteosDisponibles[i];
+            final seleccionado = _sorteosSeleccionados.contains(i) ||
+                (_sorteosSeleccionados.isEmpty && i == 0);
+            return _SorteoChip(
+              label:
+                  i == 0 ? 'Próx. ${_labelSorteo(d, i)}' : _labelSorteo(d, i),
+              isSelected: seleccionado,
+              onTap: () => _toggleSorteo(i),
+            );
+          }),
+        ),
+        if (_errorSorteo != null) ...[
+          const SizedBox(height: 4),
+          _ErrorText(_errorSorteo!),
+        ],
+        const SizedBox(height: 6),
+        Text(
+          'Puedes seleccionar hasta $_kMaxSorteosVenta sorteos. Valor total: ${_fmtCop(_totalPagar)}',
+          style: GoogleFonts.inter(
+              fontSize: 11,
+              color: const Color(0xFF6B7280),
+              fontStyle: FontStyle.italic),
+        ),
+      ],
+    );
+  }
+
+  // ── Paso selección de números — HU-BAL001 pasos 5-8 ──────────────────────
+
+  Widget _buildPasoNumeros() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PasoLabel(
+          numero: '2',
+          texto: 'Selecciona tus números',
+        ),
+        const SizedBox(height: 12),
+        // Toggle Manual / Automática
+        _buildModoToggle(),
+        const SizedBox(height: 16),
+        if (_modoAutomatico)
+          _buildSeccionAutomatica()
+        else
+          _buildSeccionManual(),
+      ],
+    );
+  }
+
   Widget _buildModoToggle() {
     return Center(
       child: Container(
-        height: 33,
+        height: 34,
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: const Color(0xFFF0F0F0),
@@ -450,14 +888,14 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
           children: [
             _ModoBtn(
               label: 'Manual',
-              isSelected: _modo == _SelectionMode.manual,
-              onTap: () => setState(() => _modo = _SelectionMode.manual),
+              isSelected: !_modoAutomatico,
+              onTap: () => setState(() => _modoAutomatico = false),
             ),
             _ModoBtn(
               label: 'Automática',
-              isSelected: _modo == _SelectionMode.automatica,
+              isSelected: _modoAutomatico,
               onTap: () {
-                setState(() => _modo = _SelectionMode.automatica);
+                setState(() => _modoAutomatico = true);
                 _generarAutomatico();
               },
             ),
@@ -473,18 +911,17 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Cabeceras de columnas
+        // Cabeceras
         Row(
           children: [
             Expanded(
               flex: 54,
               child: Text(
-                'Selecciona 5 números',
+                'Selecciona 5 números (1-$_kBalotaMax)',
                 style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF0C2577),
-                ),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF0C2577)),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -492,31 +929,25 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             Expanded(
               flex: 44,
               child: Text(
-                'Seleccione la superbalota',
+                'Superbalota (1-$_kSuperbalotaMax)',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF0C2577),
-                ),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF0C2577)),
                 textAlign: TextAlign.center,
               ),
             ),
           ],
         ),
         const SizedBox(height: 10),
-        // Grids
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(flex: 54, child: _buildBalotasGrid()),
-            // Separador con flecha
             Padding(
               padding: const EdgeInsets.only(top: 36, left: 2, right: 2),
-              child: Icon(
-                Icons.chevron_right,
-                color: const Color(0xFF0C2577),
-                size: 26,
-              ),
+              child: const Icon(Icons.chevron_right,
+                  color: Color(0xFF0C2577), size: 26),
             ),
             Expanded(flex: 44, child: _buildSuperbalotaGrid()),
           ],
@@ -538,9 +969,9 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
   Widget _buildBalotasGrid() {
     return LayoutBuilder(builder: (context, constraints) {
       const cols = 7;
-      const gap = 6.0;
+      const gap = 5.0;
       final cell =
-          ((constraints.maxWidth - gap * (cols - 1)) / cols).clamp(20.0, 32.0);
+          ((constraints.maxWidth - gap * (cols - 1)) / cols).clamp(20.0, 30.0);
       return Wrap(
         spacing: gap,
         runSpacing: gap,
@@ -561,9 +992,9 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
   Widget _buildSuperbalotaGrid() {
     return LayoutBuilder(builder: (context, constraints) {
       const cols = 4;
-      const gap = 6.0;
+      const gap = 5.0;
       final cell =
-          ((constraints.maxWidth - gap * (cols - 1)) / cols).clamp(20.0, 32.0);
+          ((constraints.maxWidth - gap * (cols - 1)) / cols).clamp(20.0, 30.0);
       return Wrap(
         spacing: gap,
         runSpacing: gap,
@@ -581,7 +1012,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     });
   }
 
-  // ── Modo automático ───────────────────────────────────────────────────────
+  // ── Modo automático (HU-BAL001 flujo 5.1) ────────────────────────────────
 
   Widget _buildSeccionAutomatica() {
     return Column(
@@ -619,7 +1050,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     );
   }
 
-  // ── Números seleccionados ─────────────────────────────────────────────────
+  // ── Números mostrados ─────────────────────────────────────────────────────
 
   Widget _buildNumerosMostrados() {
     final balotas = _balotas.toList()..sort();
@@ -633,16 +1064,14 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Fila balotas
           Row(
             children: [
               Text(
                 'Balotas:',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF4B5563),
-                ),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF4B5563)),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -659,16 +1088,14 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          // Fila superbalota
           Row(
             children: [
               Text(
                 'Superbalota:',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF4B5563),
-                ),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF4B5563)),
               ),
               const SizedBox(width: 8),
               if (_superbalota != null)
@@ -682,7 +1109,107 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     );
   }
 
-  // ── Apuestas avanzadas + resumen ──────────────────────────────────────────
+  // ── Botones acción — HU-BAL001 (Limpiar, Automática, Continuar, Cancelar) ─
+
+  Widget _buildBotonesAccion(BuildContext context) {
+    return Column(
+      children: [
+        // Fila Limpiar + Automática (HU-BAL001)
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF6B7280)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                onPressed: _limpiar,
+                icon: const Icon(Icons.delete_outline,
+                    size: 16, color: Color(0xFF6B7280)),
+                label: Text(
+                  'Limpiar',
+                  style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF6B7280)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFFECA0C), width: 1.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                onPressed: () {
+                  setState(() => _modoAutomatico = true);
+                  _generarAutomatico();
+                },
+                icon: const Icon(Icons.shuffle,
+                    size: 16, color: Color(0xFF0C2577)),
+                label: Text(
+                  'Automática',
+                  style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0C2577)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Botón Continuar (solo habilitado si completo — HU-BAL001)
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _apuestaCompleta
+                  ? const Color(0xFF0C2577)
+                  : const Color(0xFFBDD7EE),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26)),
+              elevation: 0,
+            ),
+            onPressed: () => _continuarAConfirmacion(),
+            child: Text(
+              'Continuar',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color:
+                    _apuestaCompleta ? Colors.white : const Color(0xFF6B99B9),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Botón Cancelar (HU-BAL001 — regresa sin registrar)
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: TextButton(
+            onPressed: () => _cancelar(context),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF6B7280)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Apuestas Avanzadas — Revancha + Sorteos ───────────────────────────────
 
   Widget _buildApuestasAvanzadasCard() {
     return Container(
@@ -706,20 +1233,10 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
+          // Revancha (HU-BAL001 paso 9-10)
           _buildRevanchaSelector(),
-          const SizedBox(height: 12),
-          Text(
-            '¡Adelanta tus apuestas hasta en $_kMaxSorteos sorteos y ahorra tiempo!',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: const Color(0xFF0D2677),
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 10),
-          _buildSorteosDropdown(),
           const SizedBox(height: 20),
+          // Resumen (HU-BAL001)
           Text(
             'Resumen de la apuesta',
             style: GoogleFonts.inter(
@@ -732,25 +1249,38 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
           const SizedBox(height: 10),
           _buildResumenRow(
             'Valor Baloto',
-            _fmtCop(_kPrecioBaloto * _sorteos),
+            _fmtCop(_kPrecioBaloto),
             bg: const Color(0xFFF0F0F0),
           ),
           if (_conRevancha) ...[
             const SizedBox(height: 4),
             _buildResumenRow(
               'Valor Revancha',
-              _fmtCop(_kPrecioRevancha * _sorteos),
+              '+ ${_fmtCop(_kPrecioRevancha)}',
               bg: const Color(0xFFF7F7F7),
             ),
           ],
           const SizedBox(height: 4),
           _buildResumenRow(
-            _sorteos > 1 ? 'Total (×$_sorteos sorteos)' : 'Total a pagar',
-            _fmtCop(_totalPagar),
+            'Subtotal por sorteo',
+            _fmtCop(_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)),
             bg: const Color(0xFFF0F0F0),
           ),
-          const SizedBox(height: 20),
-          _buildBotonCarrito(),
+          if (_cantidadSorteos > 1) ...[
+            const SizedBox(height: 4),
+            _buildResumenRow(
+              'Cantidad de sorteos',
+              '× $_cantidadSorteos',
+              bg: const Color(0xFFF7F7F7),
+            ),
+          ],
+          const SizedBox(height: 4),
+          _buildResumenRow(
+            'Total a pagar',
+            _fmtCop(_totalPagar),
+            bg: const Color(0xFFF0F0F0),
+            isBold: true,
+          ),
         ],
       ),
     );
@@ -802,11 +1332,11 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
                 border: Border.all(color: const Color(0xFFFECA0C)),
               ),
               child: Text(
-                'Tus mismos números participan en el sorteo Revancha. Costo adicional: ${_fmtCop(_kPrecioRevancha)}',
+                // HU-BAL001 flujo alterno 9.1.1
+                'Revancha participa con los mismos números de Baloto en un sorteo independiente. '
+                'Costo adicional: ${_fmtCop(_kPrecioRevancha)} por sorteo.',
                 style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: const Color(0xFF92400E),
-                ),
+                    fontSize: 11, color: const Color(0xFF92400E)),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -816,96 +1346,12 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     );
   }
 
-  Widget _buildSorteosDropdown() {
-    final opciones = [
-      'Jugada única',
-      ...List.generate(_kMaxSorteos - 1, (i) => '${i + 2} sorteos'),
-    ];
-    final valorActual = _sorteos == 1 ? 'Jugada única' : '$_sorteos sorteos';
-
-    return GestureDetector(
-      onTap: () {
-        showModalBottomSheet<void>(
-          context: context,
-          backgroundColor: Colors.white,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          builder: (ctx) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD1D5DB),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Número de sorteos',
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0C2577),
-                ),
-              ),
-              const Divider(),
-              for (int i = 0; i < opciones.length; i++)
-                ListTile(
-                  title: Text(
-                    opciones[i],
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: (i + 1) == _sorteos
-                          ? FontWeight.w700
-                          : FontWeight.w400,
-                      color: const Color(0xFF0C2577),
-                    ),
-                  ),
-                  trailing: (i + 1) == _sorteos
-                      ? const Icon(Icons.check, color: Color(0xFF43B75D))
-                      : null,
-                  onTap: () {
-                    setState(() => _sorteos = i + 1);
-                    Navigator.pop(ctx);
-                  },
-                ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
-      child: Container(
-        width: double.infinity,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFF0C2577)),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              valorActual,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                color: const Color(0xFF0C2577),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.keyboard_arrow_down,
-                color: Color(0xFF0C2577), size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResumenRow(String label, String valor, {required Color bg}) {
+  Widget _buildResumenRow(
+    String label,
+    String valor, {
+    required Color bg,
+    bool isBold = false,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 10),
@@ -920,6 +1366,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             label,
             style: GoogleFonts.inter(
               fontSize: 15,
+              fontWeight: isBold ? FontWeight.w700 : FontWeight.w400,
               color: const Color(0xFF0C2577),
             ),
           ),
@@ -936,76 +1383,315 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     );
   }
 
-  Widget _buildBotonCarrito() {
-    final activo = _apuestaCompleta;
-    return SizedBox(
-      width: double.infinity,
-      height: 47,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor:
-              activo ? const Color(0xFF43B75D) : const Color(0xFFBDD7EE),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(26),
-          ),
-          elevation: 0,
-        ),
-        onPressed: _anadirAlCarrito,
-        child: Text(
-          'AÑADIR AL CARRITO',
-          style: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-            color: activo ? Colors.white : const Color(0xFF6B99B9),
-          ),
-        ),
-      ),
-    );
-  }
+  // ── Confirmación — HU-BAL001 paso 12 ─────────────────────────────────────
+  // Muestra: sorteo(s), números, estado Revancha, valor total, acumulado vigente
 
-  // ── Confirmación ──────────────────────────────────────────────────────────
-
-  Widget _buildConfirmacion(bool isMobile) {
-    final padding = isMobile
-        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 16)
-        : const EdgeInsets.symmetric(horizontal: 24, vertical: 24);
+  Widget _buildConfirmacion(BuildContext context) {
     final balotas = _balotas.toList()..sort();
+    final sorteosMostrar = _sorteosSeleccionados.isEmpty
+        ? [_sorteosDisponibles[0]]
+        : _sorteosSeleccionados.map((i) => _sorteosDisponibles[i]).toList();
 
-    return Padding(
-      padding: padding,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Card de confirmación ────────────────────────────────
+              Center(
+                child: Text(
+                  'Confirma tu apuesta',
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0C2577),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Números
+              Center(
+                child: Text(
+                  'Tus balotas',
+                  style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF4B5563)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: balotas
+                      .map((n) =>
+                          _NumCircle(numero: n, isSuper: false, size: 36))
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  'Tu superbalota',
+                  style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF4B5563)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child:
+                    _NumCircle(numero: _superbalota!, isSuper: true, size: 44),
+              ),
+              const SizedBox(height: 16),
+              const Divider(color: Color(0xFFE5E7EB)),
+              const SizedBox(height: 8),
+              // Sorteos
+              _FilaDetalle(
+                'Sorteo(s)',
+                sorteosMostrar.map((d) => _labelSorteo(d, 0)).join(' · '),
+              ),
+              _FilaDetalle(
+                  'Revancha',
+                  _conRevancha
+                      ? 'Sí (+${_fmtCop(_kPrecioRevancha)}/sorteo)'
+                      : 'No'),
+              _FilaDetalle('Cantidad de sorteos', '$_cantidadSorteos'),
+              _FilaDetalle(
+                  'Valor por sorteo',
+                  _fmtCop(
+                      _kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0))),
+              const Divider(color: Color(0xFFE5E7EB)),
+              _FilaDetalle('Total a pagar', _fmtCop(_totalPagar), isBold: true),
+              const SizedBox(height: 12),
+              // Acumulado vigente en confirmación (HU-BAL001 paso 12)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
+                  color: const Color(0xFFF0F4FF),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
                   children: [
                     Text(
-                      'Tu apuesta Baloto',
+                      'Acumulado vigente',
                       style: GoogleFonts.inter(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0C2577),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF4B5563)),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              'Baloto',
+                              style: GoogleFonts.inter(
+                                  fontSize: 10, color: const Color(0xFF6B7280)),
+                            ),
+                            Text(
+                              _fmtMillones(_acumuladoBaloto),
+                              style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF0C2577)),
+                            ),
+                          ],
+                        ),
+                        if (_conRevancha)
+                          Column(
+                            children: [
+                              Text(
+                                'Revancha',
+                                style: GoogleFonts.inter(
+                                    fontSize: 10,
+                                    color: const Color(0xFF6B7280)),
+                              ),
+                              Text(
+                                _fmtMillones(_acumuladoRevancha),
+                                style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF1372AE)),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // E5: error de procesamiento
+              if (_compraEstado == _CompraEstado.error) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFCA5A5)),
+                  ),
+                  child: Text(
+                    'No se pudo completar la compra. Intente nuevamente más tarde.',
+                    style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF991B1B),
+                        fontWeight: FontWeight.w500),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+              // Botones Comprar + Cancelar (HU-BAL001 pasos 13-14)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF6B7280)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      // E7: cancelar antes de confirmar — no registra apuesta
+                      onPressed: () =>
+                          setState(() => _confirmacionVisible = false),
+                      child: Text(
+                        'Cancelar',
+                        style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF6B7280)),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    // Balotas seleccionadas
-                    Text(
-                      'Balotas',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF4B5563),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF43B75D),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24)),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
+                      onPressed: _compraEstado == _CompraEstado.procesando
+                          ? null
+                          : _confirmarCompra,
+                      child: _compraEstado == _CompraEstado.procesando
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              'Comprar',
+                              style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Compra exitosa — HU-BAL001 paso 14 ───────────────────────────────────
+  // Mensaje: "Compra realizada con éxito" + número de comprobante
+
+  Widget _buildCompraExitosa() {
+    final balotas = _balotas.toList()..sort();
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            children: [
+              // Icono éxito
+              Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F5E9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle,
+                    color: Color(0xFF43B75D), size: 40),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Compra realizada con éxito',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1B5E20),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              // Número de comprobante (HU-BAL001 postcondiciones)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F4FF),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Comprobante: ${_ticketNumero ?? ''}',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0C2577),
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Detalle de compra
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Tus balotas',
+                      style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF4B5563)),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -1014,89 +1700,59 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
                       alignment: WrapAlignment.center,
                       children: balotas
                           .map((n) =>
-                              _NumCircle(numero: n, isSuper: false, size: 36))
+                              _NumCircle(numero: n, isSuper: false, size: 32))
                           .toList(),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       'Superbalota',
                       style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF4B5563),
-                      ),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF4B5563)),
                     ),
-                    const SizedBox(height: 8),
-                    _NumCircle(numero: _superbalota!, isSuper: true, size: 44),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 6),
+                    _NumCircle(numero: _superbalota!, isSuper: true, size: 36),
+                    const SizedBox(height: 10),
                     const Divider(color: Color(0xFFE5E7EB)),
-                    const SizedBox(height: 8),
-                    _FilaDetalle(
-                        'Revancha',
-                        _conRevancha
-                            ? 'Sí (+${_fmtCop(_kPrecioRevancha)})'
-                            : 'No'),
-                    _FilaDetalle('Sorteos',
-                        _sorteos == 1 ? 'Jugada única' : '$_sorteos sorteos'),
-                    _FilaDetalle(
-                        'Valor Baloto', _fmtCop(_kPrecioBaloto * _sorteos)),
-                    if (_conRevancha)
-                      _FilaDetalle('Valor Revancha',
-                          _fmtCop(_kPrecioRevancha * _sorteos)),
-                    const Divider(color: Color(0xFFE5E7EB)),
-                    _FilaDetalle('Total a pagar', _fmtCop(_totalPagar),
+                    _FilaDetalle('Revancha', _conRevancha ? 'Sí' : 'No'),
+                    _FilaDetalle('Sorteos', '$_cantidadSorteos'),
+                    _FilaDetalle('Total pagado', _fmtCop(_totalPagar),
                         isBold: true),
-                    const SizedBox(height: 20),
-                    // Éxito
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF43B75D)),
-                      ),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.check_circle,
-                              color: Color(0xFF43B75D), size: 36),
-                          const SizedBox(height: 8),
-                          Text(
-                            '¡Apuesta registrada exitosamente!',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF1B5E20),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: _limpiar,
-                            child: Text(
-                              'Realizar otra apuesta',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.secondary500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              // ── Plan de premios ────────────────────────────────────
-              _buildPlanPremios(),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0C2577),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24)),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                  onPressed: _limpiar,
+                  child: Text(
+                    'Realizar otra apuesta',
+                    style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-      ),
+        const SizedBox(height: 16),
+        _buildPlanPremios(),
+      ],
     );
   }
+
+  // ── Plan de premios paramutual (HU-BAL001) ────────────────────────────────
 
   Widget _buildPlanPremios() {
     return Container(
@@ -1116,6 +1772,13 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
               color: const Color(0xFF0C2577),
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            'Los premios son paramutuales y dependen del acumulado y número de ganadores.',
+            style: GoogleFonts.inter(
+                fontSize: 11, color: const Color(0xFF6B7280), height: 1.4),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -1125,7 +1788,6 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             ),
             child: Column(
               children: [
-                // Cabecera combos
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: const BoxDecoration(
@@ -1149,7 +1811,6 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
                         .toList(),
                   ),
                 ),
-                // Valores
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Row(
@@ -1183,9 +1844,10 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '* Premios sujetos a retención del 20% para valores que superen los \$48.000.',
-            style:
-                GoogleFonts.inter(fontSize: 10, color: const Color(0xFF9CA3AF)),
+            '* Premio mayor: acumulado base de ${_fmtMillones(_kAcumuladoBalotoBase)}. '
+            'Sujeto a retención del 20% para premios que superen \$48.000.',
+            style: GoogleFonts.inter(
+                fontSize: 10, color: const Color(0xFF9CA3AF), height: 1.4),
             textAlign: TextAlign.center,
           ),
         ],
@@ -1236,7 +1898,7 @@ class _BalotaCell extends StatelessWidget {
                     color: bg.withValues(alpha: 0.45),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -1256,11 +1918,8 @@ class _BalotaCell extends StatelessWidget {
 }
 
 class _NumCircle extends StatelessWidget {
-  const _NumCircle({
-    required this.numero,
-    required this.isSuper,
-    this.size = 26,
-  });
+  const _NumCircle(
+      {required this.numero, required this.isSuper, this.size = 26});
   final int numero;
   final bool isSuper;
   final double size;
@@ -1397,6 +2056,160 @@ class _ModoBtn extends StatelessWidget {
   }
 }
 
+class _SorteoChip extends StatelessWidget {
+  const _SorteoChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF0C2577) : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color:
+                isSelected ? const Color(0xFF0C2577) : const Color(0xFFD1D5DB),
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFF374151),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PasoLabel extends StatelessWidget {
+  const _PasoLabel({required this.numero, required this.texto});
+  final String numero;
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 26,
+          height: 26,
+          decoration: const BoxDecoration(
+            color: Color(0xFF0C2577),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            numero,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            texto,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF0C2577),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({
+    required this.label,
+    required this.valor,
+    required this.color,
+  });
+  final String label;
+  final String valor;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style:
+              GoogleFonts.inter(fontSize: 10, color: const Color(0xFF6B7280)),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          valor,
+          style: GoogleFonts.inter(
+              fontSize: 14, fontWeight: FontWeight.w700, color: color),
+        ),
+      ],
+    );
+  }
+}
+
+class _AcumuladoCard extends StatelessWidget {
+  const _AcumuladoCard({
+    required this.titulo,
+    required this.valor,
+    required this.color,
+  });
+  final String titulo;
+  final String valor;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            titulo,
+            style:
+                GoogleFonts.inter(fontSize: 10, color: const Color(0xFF4B5563)),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              valor,
+              style: GoogleFonts.inter(
+                  fontSize: 14, fontWeight: FontWeight.w800, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _FilaDetalle extends StatelessWidget {
   const _FilaDetalle(this.label, this.valor, {this.isBold = false});
   final String label;
@@ -1442,6 +2255,15 @@ class _ErrorText extends StatelessWidget {
       text,
       style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFFDA1414)),
     );
+  }
+}
+
+class _Divisor extends StatelessWidget {
+  const _Divisor();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(color: Color(0xFFE5E7EB), height: 1, thickness: 1);
   }
 }
 
