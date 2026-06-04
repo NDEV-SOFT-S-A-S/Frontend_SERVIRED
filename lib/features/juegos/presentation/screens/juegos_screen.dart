@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -7,6 +8,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../home/presentation/widgets/footer_widget.dart';
 import '../../../home/presentation/widgets/juego_card_widget.dart';
 import '../../../home/presentation/widgets/juegos_section_widget.dart';
 import '../../../home/presentation/widgets/navbar_widget.dart';
@@ -51,7 +53,12 @@ class JuegosScreen extends StatelessWidget {
                     SizedBox(height: navbarHeight),
 
                     // ── Banner morado superior ─────────────────────────────
-                    const _JuegosBanner(),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).size.width < 720 ? 12 : 32,
+                      ),
+                      child: const _JuegosBanner(),
+                    ),
 
                     // ── Grid de tarjetas ───────────────────────────────────
                     Center(
@@ -68,6 +75,9 @@ class JuegosScreen extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 40),
+
+                    // ── Footer ─────────────────────────────────────────────
+                    const FooterWidget(),
                   ],
                 ),
               ),
@@ -95,8 +105,8 @@ class JuegosScreen extends StatelessWidget {
   }
 }
 
-// ── Banner superior morado ─────────────────────────────────────────────────────
-// Figma 1127:10116: fondo indigo-navy con sparkles y texto centrado en blanco
+// ── Banner superior — Figma node 1131:11217 ───────────────────────────────────
+// Fondo #3E4095 sólido + textura bolas al 10% · border-radius 16 · h=178px
 
 class _JuegosBanner extends StatelessWidget {
   const _JuegosBanner();
@@ -105,81 +115,86 @@ class _JuegosBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
     final isMobile = screenW < 720;
+    final iconSize = isMobile ? 32.0 : 138.0;
+    final iconSizeRight = isMobile ? 36.0 : 150.0;
+    final iconGap = isMobile ? 10.0 : 36.0;
+    final bannerH = isMobile ? 80.0 : 178.0;
+    final hPad = isMobile ? 12.0 : 51.0;
+    final fontSize = isMobile ? 13.5 : 40.0;
 
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            Color(0xFF181966),
-            Color(0xFF2E318E),
-            Color(0xFF181966),
-          ],
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1728),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: bannerH,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // ── Fondo sólido ──────────────────────────────────────────
+                  const ColoredBox(color: Color(0xFF3E4095)),
+
+                  // ── Textura bolas ─────────────────────────────────────────
+                  Opacity(
+                    opacity: 0.50,
+                    child: Image.asset(
+                      'assets/images/Frame_juego.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+
+                  // ── Fila: icono · texto · icono ───────────────────────────
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: hPad),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/images/Icon_juego.svg',
+                          width: iconSize,
+                          height: iconSize,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                        SizedBox(width: iconGap),
+                        Expanded(
+                          child: Text(
+                            'Descubre los juegos de chance que pueden cambiar tu suerte',
+                            style: GoogleFonts.inter(
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              height: 1.25,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        SizedBox(width: iconGap),
+                        SvgPicture.asset(
+                          'assets/images/Icon_juego.svg',
+                          width: iconSizeRight,
+                          height: iconSizeRight,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // ── Sparkles esquina izquierda ─────────────────────────────────
-          Positioned(
-            left: isMobile ? 10 : 48,
-            top: 14,
-            child: const _SparkleIcon(size: 30),
-          ),
-          Positioned(
-            left: isMobile ? 26 : 96,
-            bottom: 10,
-            child: const _SparkleIcon(size: 13, opacity: 0.5),
-          ),
-
-          // ── Sparkles esquina derecha ───────────────────────────────────
-          Positioned(
-            right: isMobile ? 10 : 48,
-            top: 10,
-            child: const _SparkleIcon(size: 42),
-          ),
-          Positioned(
-            right: isMobile ? 26 : 96,
-            bottom: 8,
-            child: const _SparkleIcon(size: 17, opacity: 0.5),
-          ),
-
-          // ── Texto principal ────────────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 64 : 160,
-              vertical: isMobile ? 28 : 44,
-            ),
-            child: Text(
-              'Descubre los juegos de chance que pueden cambiar tu suerte',
-              style: GoogleFonts.inter(
-                fontSize: isMobile ? 20 : 32,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                height: 1.3,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SparkleIcon extends StatelessWidget {
-  const _SparkleIcon({required this.size, this.opacity = 1.0});
-
-  final double size;
-  final double opacity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: opacity,
-      child: Icon(Icons.auto_awesome, color: Colors.white, size: size),
     );
   }
 }
