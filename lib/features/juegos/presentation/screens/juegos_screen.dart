@@ -31,8 +31,7 @@ class JuegosScreen extends StatelessWidget {
           (prev.user == null) != (curr.user == null) ||
           prev.status != curr.status,
       builder: (context, authState) {
-        final bool isLoggedIn =
-            authState.user != null ||
+        final bool isLoggedIn = authState.user != null ||
             authState.status == AuthStatus.success ||
             authState.status == AuthStatus.registrationSuccess;
 
@@ -219,8 +218,7 @@ class _JuegosGrid extends StatelessWidget {
       builder: (context, constraints) {
         const spacing = 16.0;
         final cols = _columns(constraints.maxWidth);
-        final cardW =
-            (constraints.maxWidth - spacing * (cols - 1)) / cols;
+        final cardW = (constraints.maxWidth - spacing * (cols - 1)) / cols;
         final cardH = cardW * (360 / 288); // aspect ratio Figma
 
         return Wrap(
@@ -238,16 +236,16 @@ class _JuegosGrid extends StatelessWidget {
                     height: 360,
                     child: JuegoCardWidget(
                       data: kJuegos[idx],
-                      // Solo El Dominguero Millonario (índice 1) navega a su pantalla
-                      onTap: idx == 1
-                          ? () => context.go(AppRoutes.dominguero)
-                          : idx == 6
-                              ? () => context.go(AppRoutes.chanceTradicional)
-                              : idx == 8
-                                  ? () => context.go(AppRoutes.chanceMillonario)
-                                  : idx == 9
-                                      ? () => context.go(AppRoutes.superwin)
-                                      : null,
+                      onTap: switch (idx) {
+                        0 => () => context.go(AppRoutes.chanceTradicional),
+                        1 => () => context.go(AppRoutes.pagaTodo),
+                        2 => () => context.go(AppRoutes.superwin),
+                        3 => () => context.go(AppRoutes.dominguero),
+                        6 => () => context.go(AppRoutes.chanceMillonario),
+                        7 => () => context.go(AppRoutes.pataMillonaria),
+                        9 => () => context.go(AppRoutes.balotoRevancha),
+                        _ => null,
+                      },
                     ),
                   ),
                 ),

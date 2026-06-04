@@ -11,6 +11,7 @@ import '../../features/juegos/presentation/screens/dominguero_screen.dart';
 import '../../features/juegos/presentation/screens/paga_todo_screen.dart';
 import '../../features/juegos/presentation/screens/superwin_screen.dart';
 import '../../features/juegos/presentation/screens/pata_millonaria_screen.dart';
+import '../../features/juegos/presentation/screens/baloto_revancha_screen.dart';
 import '../../features/resultados/presentation/screens/resultados_screen.dart';
 import '../../shared/screens/placeholder_screen.dart';
 
@@ -28,6 +29,7 @@ class AppRoutes {
   static const String chanceTradicional = '/juegos/chance-tradicional';
   static const String pagaTodo          = '/juegos/paga-todo';
   static const String pataMillonaria    = '/juegos/pata-millonaria';
+  static const String balotoRevancha    = '/juegos/baloto-revancha';
   static const String pagos = '/pagos';
   static const String wallet = '/wallet';
   static const String resultados = '/resultados';
@@ -100,6 +102,11 @@ class AppRouter {
         path: AppRoutes.pataMillonaria,
         name: 'pata-millonaria',
         builder: (context, state) => const PataMillonariaScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.balotoRevancha,
+        name: 'baloto-revancha',
+        builder: (context, state) => const BalotoRevanchaScreen(),
       ),
       GoRoute(
         path: AppRoutes.resultados,
