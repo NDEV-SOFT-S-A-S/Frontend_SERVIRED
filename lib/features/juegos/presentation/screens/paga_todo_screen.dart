@@ -235,6 +235,10 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
   // ── Auth required ──────────────────────────────────────────────────────────
 
   void _showLoginModal(BuildContext ctx) {
+    if (MediaQuery.sizeOf(ctx).width < 600) {
+      ctx.push(AppRoutes.login);
+      return;
+    }
     showDialog<void>(
       context: ctx,
       barrierDismissible: false,

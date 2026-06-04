@@ -20,6 +20,13 @@ import '../widgets/resultados_carousel_widget.dart';
 import '../widgets/section_header_widget.dart';
 
 void _showLoginModal(BuildContext context) {
+  // Mobile: navegar a LoginScreen (pantalla completa azul como Figma)
+  if (MediaQuery.sizeOf(context).width < 600) {
+    context.push(AppRoutes.login);
+    return;
+  }
+
+  // Desktop/web: modal card igual que antes
   showDialog<void>(
     context: context,
     barrierDismissible: false,

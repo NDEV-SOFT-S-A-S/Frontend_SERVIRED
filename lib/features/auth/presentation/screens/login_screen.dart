@@ -26,6 +26,7 @@ class LoginFormWidget extends StatefulWidget {
     required this.onLoginSuccess,
     this.onRecoveryRequested,
     this.onRegisterRequested,
+    this.isMobile = false,
   });
 
   final VoidCallback onClose;
@@ -34,6 +35,7 @@ class LoginFormWidget extends StatefulWidget {
   /// the modal and navigates to OTP verification.
   final ValueChanged<String>? onRecoveryRequested;
   final VoidCallback? onRegisterRequested;
+  final bool isMobile;
 
   @override
   State<LoginFormWidget> createState() => _LoginFormWidgetState();
@@ -137,7 +139,10 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
       },
       builder: (context, state) {
         if (_showRecoveryConfirmation) {
-          return _RecoveryConfirmationCard(onClose: widget.onClose);
+          return _RecoveryConfirmationCard(
+            onClose: widget.onClose,
+            isMobile: widget.isMobile,
+          );
         }
         if (_showForgotPassword) {
           return _RecoverPasswordCard(
@@ -146,6 +151,7 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
             isLoading: state.isLoading,
             docNumberTouched: _recoverDocNumberTouched,
             canSubmit: _canRecoverSubmit,
+            isMobile: widget.isMobile,
             onDocTypeChanged: (t) => setState(() => _recoverDocType = t),
             onDocNumberChanged: (_) => setState(() {}),
             onSubmit: () => _onRecoverSubmit(context),
@@ -164,6 +170,7 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
           docNumberTouched: _docNumberTouched,
           passwordTouched: _passwordTouched,
           canSubmit: _canSubmit,
+          isMobile: widget.isMobile,
           onDocTypeChanged: (t) => setState(() => _selectedDocType = t),
           onRememberChanged: (v) => setState(() => _rememberMe = v ?? false),
           onTogglePassword: () =>
@@ -191,6 +198,42 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
+
+    if (isMobile) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0C4D79),
+        body: Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF1E7FC0), Color(0xFF0C4D79)],
+            ),
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 24, bottom: 40),
+              child: LoginFormWidget(
+                isMobile: true,
+                onClose: () => context.go(AppRoutes.home),
+                onLoginSuccess: () => context.go(AppRoutes.home),
+                onRecoveryRequested: (identifier) => context.push(
+                  AppRoutes.otpVerification,
+                  extra: {
+                    'destination': identifier,
+                    'flow': OtpFlow.passwordRecovery,
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Desktop/web — layout unchanged
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: Stack(
@@ -270,6 +313,7 @@ class _LoginCard extends StatelessWidget {
     required this.onForgotPassword,
     required this.onRegister,
     required this.onClose,
+    this.isMobile = false,
   });
 
   final GlobalKey<FormState> formKey;
@@ -282,6 +326,7 @@ class _LoginCard extends StatelessWidget {
   final bool docNumberTouched;
   final bool passwordTouched;
   final bool canSubmit;
+  final bool isMobile;
 
   final ValueChanged<DocumentType?> onDocTypeChanged;
   final ValueChanged<bool?> onRememberChanged;
@@ -296,6 +341,177 @@ class _LoginCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isMobile) return _buildMobile(context);
+    return _buildDesktop(context);
+  }
+
+  // ── Mobile: pantalla completa azul, sin card ──────────────────────────────
+  Widget _buildMobile(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Form(
+        key: formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Logo centrado, tamaño mobile
+            const _LoginLogo(logoWidth: 280, logoHeight: 122),
+            const SizedBox(height: 28),
+
+            // Título
+            Text(
+              'Ingresa tus datos',
+              style: GoogleFonts.inter(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AppColors.neutralWhite,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Tipo de documento — ancho completo
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _FormLabel(text: 'Tipo de documento*'),
+                const SizedBox(height: 6),
+                _DocTypeDropdown(
+                  value: selectedDocType,
+                  enabled: !isLoading,
+                  onChanged: onDocTypeChanged,
+                  errorText: docNumberTouched && selectedDocType == null
+                      ? 'Selecciona el tipo de documento.'
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Número de documento — ancho completo
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _FormLabel(text: 'Número de documento*'),
+                const SizedBox(height: 6),
+                _FormInput(
+                  controller: docNumberController,
+                  hint: 'Ingresa un número',
+                  enabled: !isLoading,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  textInputAction: TextInputAction.next,
+                  onChanged: onDocNumberChanged,
+                  validator: docNumberTouched
+                      ? (v) => Validators.documentNumber(v, selectedDocType)
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Contraseña — ancho completo
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _FormLabel(text: 'Contraseña*'),
+                const SizedBox(height: 6),
+                _PasswordInput(
+                  controller: passwordController,
+                  obscure: obscurePassword,
+                  enabled: !isLoading,
+                  onToggle: onTogglePassword,
+                  onChanged: onPasswordChanged,
+                  onSubmitted: (_) => onSubmit(),
+                  validator: passwordTouched ? Validators.password : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Recordar mis datos
+            _RememberMeRow(
+              value: rememberMe,
+              enabled: !isLoading,
+              onChanged: onRememberChanged,
+            ),
+            const SizedBox(height: 28),
+
+            // Botón Ingresar — ancho completo
+            SizedBox(
+              width: double.infinity,
+              child: _LoginButton(
+                onPressed: onSubmit,
+                isLoading: isLoading,
+                canSubmit: canSubmit,
+                width: double.infinity,
+              ),
+            ),
+            if (onMockLogin != null) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: isLoading ? null : onMockLogin,
+                child: Text(
+                  '[DEV] Ingresar sin backend',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppColors.neutralWhite.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+
+            // Olvidé mi contraseña
+            TextButton(
+              onPressed: isLoading ? null : onForgotPassword,
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, 24),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Olvidé mi contraseña',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.neutralWhite,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // ¿No tienes cuenta?
+            GestureDetector(
+              onTap: isLoading ? null : onRegister,
+              child: RichText(
+                text: TextSpan(
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.neutralWhite,
+                  ),
+                  children: const [
+                    TextSpan(text: '¿No tienes cuenta? '),
+                    TextSpan(
+                      text: 'regístrate aquí',
+                      style: TextStyle(color: Color(0xFFFFCC00)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Desktop: card 704px con border-radius (sin cambios) ───────────────────
+  Widget _buildDesktop(BuildContext context) {
     // Figma 561:8743 — medidas exactas del diseño. Desktop fijo, sin escala.
     // modal: 704×881px · inputs: 320px · botón: 371×57px · logo: 294×129px
     const double modalWidth = 704.0;
@@ -354,8 +570,6 @@ class _LoginCard extends StatelessWidget {
                       value: selectedDocType,
                       enabled: !isLoading,
                       onChanged: onDocTypeChanged,
-                      // Error visible solo tras intento de envío (docNumberTouched
-                      // se activa junto con el resto de campos en _onSubmit)
                       errorText: docNumberTouched && selectedDocType == null
                           ? 'Selecciona el tipo de documento.'
                           : null,
@@ -1054,7 +1268,7 @@ class _RememberMeRow extends StatelessWidget {
 class _LoginButton extends StatelessWidget {
   // Figma: 371×57px · rounded-26px
   // Inactivo: bg #D7D7D7 · texto blanco
-  // Activo: bg blanco (#FFFFFF) · texto secondary500 (#1372AE)
+  // Activo: bg secondary300 (#3C9BD6) · texto blanco
   const _LoginButton({
     required this.onPressed,
     required this.isLoading,
@@ -1078,7 +1292,7 @@ class _LoginButton extends StatelessWidget {
       width: width,
       height: 57,
       decoration: BoxDecoration(
-        color: active ? AppColors.neutralWhite : const Color(0xFFD7D7D7),
+        color: active ? AppColors.secondary300 : const Color(0xFFD7D7D7),
         borderRadius: BorderRadius.circular(26),
       ),
       child: Material(
@@ -1101,9 +1315,7 @@ class _LoginButton extends StatelessWidget {
                     style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: active
-                          ? AppColors.secondary500
-                          : AppColors.neutralWhite,
+                      color: AppColors.neutralWhite,
                     ),
                   ),
           ),
@@ -1121,11 +1333,16 @@ class _CloseButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onClose,
-      child: const Padding(
-        padding: EdgeInsets.all(4),
-        child: Icon(
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.neutralWhite, width: 1.5),
+        ),
+        child: const Icon(
           Icons.close_rounded,
-          size: 24,
+          size: 18,
           color: AppColors.neutralWhite,
         ),
       ),
@@ -1139,46 +1356,91 @@ class _CloseButton extends StatelessWidget {
 // ──────────────────────────────────────────────────────────────────────────────
 
 class _RecoveryConfirmationCard extends StatelessWidget {
-  const _RecoveryConfirmationCard({required this.onClose});
+  const _RecoveryConfirmationCard({
+    required this.onClose,
+    this.isMobile = false,
+  });
 
   final VoidCallback onClose;
+  final bool isMobile;
 
   @override
   Widget build(BuildContext context) {
-    // Figma 561:10417 — medidas exactas.
-    const double modalWidth = 704.0;
-    const double logoW = 294.0;
-    const double logoH = 129.0;
-    // Figma: texto w-[556px] dentro del modal de 704px
-    const double textW = 556.0;
+    if (isMobile) return _buildMobile();
+    return _buildDesktop();
+  }
 
+  // Mobile: pantalla completa, sin card
+  Widget _buildMobile() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const _LoginLogo(logoWidth: 280, logoHeight: 122),
+          const SizedBox(height: 24),
+          Text(
+            'Olvidé mi contraseña',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppColors.neutralWhite,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Hemos enviado un correo electrónico con las instrucciones '
+            'para recuperar tu contraseña. Por favor revisa tu bandeja '
+            'de entrada y sigue los pasos indicados.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              height: 1.5,
+              color: AppColors.neutralWhite,
+            ),
+          ),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  // Desktop: card 704px — Figma 561:10417
+  // gap-[20px] · logo 294×129 · title 20px · body w-556 · spacer h-73
+  Widget _buildDesktop() {
     return Container(
-      width: modalWidth,
+      width: 704.0,
       decoration: BoxDecoration(
         color: AppColors.secondary500,
         borderRadius: BorderRadius.circular(38),
         boxShadow: AppColors.sombra200,
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 10, 22, 40),
+        padding: const EdgeInsets.fromLTRB(22, 10, 22, 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ── Botón cerrar ───────────────────────────────────────────────
-            Align(
-              alignment: Alignment.centerRight,
-              child: _CloseButton(onClose: onClose),
+            // Close button row — Figma h-23
+            SizedBox(
+              height: 23,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: _CloseButton(onClose: onClose),
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 10),
 
-            // ── Logo Gane ──────────────────────────────────────────────────
-            const _LoginLogo(logoWidth: logoW, logoHeight: logoH),
-            const SizedBox(height: 12),
+            // Content — gap-20 entre todos los hijos
+            const _LoginLogo(logoWidth: 294, logoHeight: 129),
+            const SizedBox(height: 20),
 
-            // ── Título ─────────────────────────────────────────────────────
             Text(
-              'Olvidé mi contraseña',
+              'Olvide mi contraseña',
+              textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -1187,9 +1449,8 @@ class _RecoveryConfirmationCard extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // ── Texto informativo (Figma: Inter Regular 16px, w-556px) ─────
             SizedBox(
-              width: textW,
+              width: 556,
               child: Text(
                 'Hemos enviado un correo electrónico con las instrucciones '
                 'para recuperar tu contraseña. Por favor revisa tu bandeja '
@@ -1198,12 +1459,10 @@ class _RecoveryConfirmationCard extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
-                  height: 1.5,
                   color: AppColors.neutralWhite,
                 ),
               ),
             ),
-
             const SizedBox(height: 73),
           ],
         ),
@@ -1229,6 +1488,7 @@ class _RecoverPasswordCard extends StatelessWidget {
     required this.onSubmit,
     required this.onRegister,
     required this.onClose,
+    this.isMobile = false,
   });
 
   final TextEditingController docNumberController;
@@ -1236,6 +1496,7 @@ class _RecoverPasswordCard extends StatelessWidget {
   final bool isLoading;
   final bool docNumberTouched;
   final bool canSubmit;
+  final bool isMobile;
   final ValueChanged<DocumentType?> onDocTypeChanged;
   final ValueChanged<String> onDocNumberChanged;
   final VoidCallback onSubmit;
@@ -1244,6 +1505,102 @@ class _RecoverPasswordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isMobile) return _buildMobile(context);
+    return _buildDesktop(context);
+  }
+
+  Widget _buildMobile(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const _LoginLogo(logoWidth: 280, logoHeight: 122),
+          const SizedBox(height: 28),
+          Text(
+            'Olvidé mi contraseña',
+            style: GoogleFonts.inter(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppColors.neutralWhite,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const _FormLabel(text: 'Tipo de documento*'),
+              const SizedBox(height: 6),
+              _DocTypeDropdown(
+                value: selectedDocType,
+                enabled: !isLoading,
+                onChanged: onDocTypeChanged,
+                errorText: docNumberTouched && selectedDocType == null
+                    ? 'Selecciona el tipo de documento.'
+                    : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const _FormLabel(text: 'Número de documento*'),
+              const SizedBox(height: 6),
+              _FormInput(
+                controller: docNumberController,
+                hint: 'Ingresa un número',
+                enabled: !isLoading,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                textInputAction: TextInputAction.done,
+                onChanged: onDocNumberChanged,
+                validator: docNumberTouched
+                    ? (v) => Validators.documentNumber(v, selectedDocType)
+                    : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            child: _LoginButton(
+              onPressed: onSubmit,
+              isLoading: isLoading,
+              canSubmit: canSubmit,
+              width: double.infinity,
+              label: 'Recuperar contraseña',
+            ),
+          ),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: isLoading ? null : onRegister,
+            child: RichText(
+              text: TextSpan(
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.neutralWhite,
+                ),
+                children: const [
+                  TextSpan(text: '¿No tienes cuenta? '),
+                  TextSpan(
+                    text: 'regístrate aquí',
+                    style: TextStyle(color: Color(0xFFFFCC00)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktop(BuildContext context) {
     // Figma 561:10208 — mismas medidas exactas que el modal de login.
     const double modalWidth = 704.0;
     const double inputW = 320.0;

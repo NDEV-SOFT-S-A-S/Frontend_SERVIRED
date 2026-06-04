@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get_it/get_it.dart';
 
+import 'package:servired_app/core/di/injection.dart';
 import 'package:servired_app/main.dart';
 
 void main() {
   setUpAll(() async {
-    // Cargar variables de entorno para tests
+    WidgetsFlutterBinding.ensureInitialized();
     await dotenv.load(fileName: '.env.dev');
+    setupDependencies();
+  });
+
+  tearDownAll(() async {
+    await GetIt.instance.reset();
   });
 
   testWidgets('ServiredApp arranca sin errores', (WidgetTester tester) async {

@@ -232,6 +232,10 @@ class _ChanceTradicionalScreenState extends State<ChanceTradicionalScreen> {
   // ── Auth required ─────────────────────────────────────────────────────────
 
   void _showLoginModal(BuildContext ctx) {
+    if (MediaQuery.sizeOf(ctx).width < 600) {
+      ctx.push(AppRoutes.login);
+      return;
+    }
     showDialog<void>(
       context: ctx,
       barrierDismissible: false,
