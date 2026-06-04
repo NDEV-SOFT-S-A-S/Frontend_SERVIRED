@@ -6,7 +6,7 @@ abstract final class AppAssets {
   static const String bannerAstro   = 'assets/images/banner_1.png';
   static const String bannerBaloto  = 'assets/images/banner_2.png';
   static const String bannerBanner3 = 'assets/images/banner_3.png';
-  static const String bannerBanner4 = 'assets/images/banner_1.png'; // reusar
+  static const String bannerBanner4 = 'assets/images/banner_4.png';
 
   static const List<String> banners = [
     bannerAstro,
@@ -26,31 +26,45 @@ abstract final class AppAssets {
   static const String iconResultados = 'assets/images/icon_resultados.svg';
   static const String iconAcumulados = 'assets/images/icon_acumulados.svg';
   static const String iconReloj      = 'assets/images/icon_reloj.svg';
+  static const String iconJuego      = 'assets/images/Icon_juego.svg';
 
   // ── Logos de loterías — resultados ────────────────────────────────────────
   static const String logoRisaralda = 'assets/images/logo_risaralda.png';
   static const String logoValle     = 'assets/images/logo_valle.png';
 
-  // ── Juegos ────────────────────────────────────────────────────────────────
-  // Verificado contra Figma (nodos 561:8133 y 561:8139) por hash SHA-1.
-  // juego_4 es JPEG (distinto hash al PNG de Figma, mismo contenido visual).
-  // Fila 1: La Pata Millonaria · El Domingueño Millonario · Paga Todo · Baloto Revancha · Doble Chance
-  // Fila 2: La Quinta · Chance · Quincenazo · Chance Millonario Sorprendente · Chance Superwin
-  static const String juegoImg1  = 'assets/images/juego_1.png';   // La Pata Millonaria
-  static const String juegoImg2  = 'assets/images/juego_2.png';   // El Domingueño Millonario
-  static const String juegoImg3  = 'assets/images/juego_3.png';   // Paga Todo
-  static const String juegoImg4  = 'assets/images/juego_4.jpeg';  // Baloto Revancha
-  static const String juegoImg5  = 'assets/images/juego_5.png';   // Doble Chance
-  static const String juegoImg6  = 'assets/images/juego_6.png';   // La Quinta
-  static const String juegoImg7  = 'assets/images/juego_7.png';   // Chance
-  static const String juegoImg8  = 'assets/images/juego_8.png';   // Quincenazo
-  static const String juegoImg9  = 'assets/images/juego_9.png';   // Chance Millonario Sorprendente
-  static const String juegoImg10 = 'assets/images/juego_10.png';  // Chance Superwin
+  // ── Juegos (assets renombrados, orden de producto) ───────────────────────
+  // Orden: Chance · PagaTodo · SuperWin · Dominguero · Quincenazo · DobleChance
+  //        ChanceMillonario · PataMillonaria · LaQuinta · Baloto · Miloto · Colorloto
+  static const String juegoChance          = 'assets/images/juego_chance.png';
+  static const String juegoPagaTodo        = 'assets/images/juego_paga_todo.png';
+  static const String juegoSuperwin        = 'assets/images/juego_superwin.png';
+  static const String juegoDominguero      = 'assets/images/juego_dominguero.png';
+  static const String juegoQuincenazo      = 'assets/images/juego_quincenazo.png';
+  static const String juegoDobleChance     = 'assets/images/juego_doble_chance.png';
+  static const String juegoChanceMillonario= 'assets/images/juego_chance_millonario.png';
+  static const String juegoPataMillonaria  = 'assets/images/juego_pata_millonaria.png';
+  static const String juegoQuinta         = 'assets/images/juego_quinta.png';
+  static const String juegoBalotoRevancha = 'assets/images/juego_baloto_revancha.jpeg';
+  static const String juegoMiloto         = 'assets/images/juego_miloto.png';
+  static const String juegoColorloto      = 'assets/images/juego_colorloto.png';
 
   static const List<String> juegoImages = [
-    juegoImg1, juegoImg2, juegoImg3, juegoImg4,  juegoImg5,
-    juegoImg6, juegoImg7, juegoImg8, juegoImg9,  juegoImg10,
+    juegoChance, juegoPagaTodo, juegoSuperwin, juegoDominguero,
+    juegoQuincenazo, juegoDobleChance, juegoChanceMillonario, juegoPataMillonaria,
+    juegoQuinta, juegoBalotoRevancha, juegoMiloto, juegoColorloto,
   ];
+
+  // ── Juegos legacy (juego_N) — conservados para backward-compat ───────────
+  static const String juegoImg1  = 'assets/images/juego_1.png';
+  static const String juegoImg2  = 'assets/images/juego_2.png';
+  static const String juegoImg3  = 'assets/images/juego_3.png';
+  static const String juegoImg4  = 'assets/images/juego_4.jpeg';
+  static const String juegoImg5  = 'assets/images/juego_5.png';
+  static const String juegoImg6  = 'assets/images/juego_6.png';
+  static const String juegoImg7  = 'assets/images/juego_7.png';
+  static const String juegoImg8  = 'assets/images/juego_8.png';
+  static const String juegoImg9  = 'assets/images/juego_9.png';
+  static const String juegoImg10 = 'assets/images/juego_10.png';
 
   // ── Navbar logueado (Figma: Header propiedad1="logueado", node 561:10713) ──
   static const String iconDollar  = 'assets/images/Dollar.svg';                    // 16×16 saldo

@@ -106,9 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Altura del header: 64px en móvil (<720px), 104/120px en desktop (Figma).
+  // Altura del header: 44px en móvil (<720px) · Figma node 561:12013 h=44
   static double _navbarHeight(double screenW, bool loggedIn) {
-    if (screenW < 720) return 64.0;
+    if (screenW < 720) return 44.0;
     return loggedIn ? 120.0 : 104.0;
   }
 
@@ -143,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
         );
 
         return Scaffold(
-          // Único proveedor de fondo — #1372AE continuo para toda la página.
           backgroundColor: AppColors.homeBackground,
           body: Stack(
             children: [
@@ -180,26 +179,44 @@ class _HomeScreenState extends State<HomeScreen> {
 
                             // ── Acumulados ───────────────────────────────────
                             const SizedBox(height: 16),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              child: AcumuladosSectionWidget(),
+                            // Móvil: sin padding → el widget maneja su propio px-16
+                            // Desktop: px-20 para alineación con el resto
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final bool isMobile =
+                                    constraints.maxWidth < 720;
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isMobile ? 0 : 20,
+                                  ),
+                                  child: const AcumuladosSectionWidget(),
+                                );
+                              },
                             ),
 
                             // ── Resultados loterías y sorteos ────────────────
                             const SizedBox(height: 16),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              child: SectionHeaderWidget(
-                                icon: SvgPicture.asset(
-                                  AppAssets.iconResultados,
-                                  width: 28,
-                                  height: 28,
-                                ),
-                                title: 'Resultados loterías y sorteos',
-                                showVerMas: true,
-                                onVerMas: () => context.go(AppRoutes.resultados),
-                              ),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final bool isMobile =
+                                    constraints.maxWidth < 720;
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isMobile ? 16 : 20,
+                                  ),
+                                  child: SectionHeaderWidget(
+                                    icon: SvgPicture.asset(
+                                      AppAssets.iconResultados,
+                                      width: 28,
+                                      height: 28,
+                                    ),
+                                    title: 'Resultados loterías y sorteos',
+                                    showVerMas: true,
+                                    onVerMas: () =>
+                                        context.go(AppRoutes.resultados),
+                                  ),
+                                );
+                              },
                             ),
                             const SizedBox(height: 16),
                             // Móvil: sin padding → scroll táctil desde el borde
@@ -217,9 +234,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
                             // ── Juegos ───────────────────────────────────────
                             const SizedBox(height: 16),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              child: JuegosSectionWidget(),
+                            // Móvil: sin padding → el widget maneja su propio px-16
+                            // Desktop: px-20
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final bool isMobile =
+                                    constraints.maxWidth < 720;
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isMobile ? 0 : 20,
+                                  ),
+                                  child: const JuegosSectionWidget(),
+                                );
+                              },
                             ),
                           ],
                         ),

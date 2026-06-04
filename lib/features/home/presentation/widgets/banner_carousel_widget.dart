@@ -8,10 +8,10 @@ const _kBannerUrls = AppAssets.banners;
 // Alignment por banner: ancla el borde donde están los logos para que BoxFit.cover
 // no los recorte al ajustar el desborde horizontal (móvil) o vertical (desktop).
 const _kBannerAlignments = [
-  Alignment.bottomLeft,   // banner_1: Astro — logos Gane+Chance abajo izquierda
-  Alignment.bottomCenter, // banner_2: Baloto — texto izq + logos der: center distribuye el recorte 50/50
-  Alignment.bottomCenter, // banner_3
-  Alignment.bottomLeft,   // banner_4 (reutiliza banner_1)
+  Alignment.bottomLeft,              // banner_1: Astro — logos Gane+Chance abajo izquierda
+  Alignment(0.28, 1.0),              // banner_2: Baloto — ancla a la derecha para mostrar logo Gane/ChancE completo
+  Alignment.bottomCenter,            // banner_3
+  Alignment.bottomLeft,              // banner_4
 ];
 
 // Figma desktop: banner 821×304px, gap 5px, carousel h=333px, botones 37×37px
@@ -134,46 +134,43 @@ class _BannerCarouselWidgetState extends State<BannerCarouselWidget> {
   }
 
   // ── Móvil: un banner casi full-width (0.92 VF) + dots indicator ───────────
-  // Altura total: 170px banner + 8px gap + 12px dots = 190px
+  // Todos los assets tienen ratio 821/304 = 2.701.
+  // AspectRatio con ese valor hace que cover llene el contenedor exactamente
+  // (sin recorte ni barras) en cualquier ancho de pantalla.
   Widget _buildMobile() {
-    return SizedBox(
-      height: 190,
-      child: Column(
-        children: [
-          // Banner
-          SizedBox(
-            height: 170,
-            child: PageView.builder(
-              controller: _mobileCtrl,
-              padEnds: false,
-              itemCount: _kBannerUrls.length,
-              itemBuilder: (context, i) {
-                return Padding(
-                  // Gap derecho entre banners
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(_kBannerRadius),
-                    child: Image.asset(
-                      _kBannerUrls[i],
-                      fit: BoxFit.cover,
-                      alignment: _kBannerAlignments[i],
-                      errorBuilder: (_, __, ___) => _BannerPlaceholder(index: i),
-                    ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AspectRatio(
+          aspectRatio: 821 / 304,
+          child: PageView.builder(
+            controller: _mobileCtrl,
+            padEnds: false,
+            itemCount: _kBannerUrls.length,
+            itemBuilder: (context, i) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(_kBannerRadius),
+                  child: Image.asset(
+                    _kBannerUrls[i],
+                    fit: BoxFit.cover,
+                    alignment: _kBannerAlignments[i],
+                    errorBuilder: (_, __, ___) => _BannerPlaceholder(index: i),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
+        ),
 
-          const SizedBox(height: 8),
+        const SizedBox(height: 8),
 
-          // Dots
-          _DotsIndicator(
-            count: _kBannerUrls.length,
-            current: _currentPage,
-          ),
-        ],
-      ),
+        _DotsIndicator(
+          count: _kBannerUrls.length,
+          current: _currentPage,
+        ),
+      ],
     );
   }
 }

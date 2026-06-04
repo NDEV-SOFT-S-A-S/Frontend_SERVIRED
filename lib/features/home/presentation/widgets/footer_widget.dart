@@ -57,25 +57,25 @@ class FooterWidget extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // ── Cuerpo del footer: 4 columnas ─────────────────────────────────
-          // paddingTop 79: columnas empiezan en top:79 dentro del footer (Figma)
-          // paddingBottom 68: gap entre fondo separador (615px) y fin de contenido (683px)
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-              top: 79,
-              bottom: 68,
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth >= 900) {
-                  return const _FooterColumns();
-                }
-                return const _FooterColumnsMobile();
-              },
-            ),
+          // ── Cuerpo del footer ─────────────────────────────────────────────
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final bool mobile = constraints.maxWidth < 900;
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: mobile ? 12 : 24,
+                  right: mobile ? 12 : 24,
+                  top: mobile ? 20 : 100,
+                  bottom: mobile ? 20 : 80,
+                ),
+                child: mobile
+                    ? const _FooterColumnsMobile()
+                    : const _FooterColumns(),
+              );
+            },
           ),
+          // ── Copyright ─────────────────────────────────────────────────────
+          const _FooterCopyright(),
         ],
       ),
     );
@@ -95,13 +95,14 @@ class _FooterColumns extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Flexible(child: _Col1General()),
+          // Expanded (FlexFit.tight) fuerza ancho fijo → el texto hace wrap en lugar de overflow
+          Expanded(child: _Col1General()),
           const _VerticalDivider(),
-          Flexible(child: _Col2Empresa()),
+          Expanded(child: _Col2Empresa()),
           const _VerticalDivider(),
-          Flexible(child: _Col3Fundacion()),
+          Expanded(child: _Col3Fundacion()),
           const _VerticalDivider(),
-          Flexible(child: _Col4EticaLogos()),
+          Expanded(child: _Col4EticaLogos()),
         ],
       ),
     );
@@ -118,8 +119,8 @@ class _VerticalDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 1,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      color: const Color(0x33FFFFFF),
+      margin: const EdgeInsets.symmetric(horizontal: 32),
+      color: const Color(0x4DFFFFFF), // rgba(255,255,255,0.30)
     );
   }
 }
@@ -182,7 +183,7 @@ class _Col2Empresa extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 20),
+      padding: const EdgeInsets.only(left: 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -203,7 +204,7 @@ class _Col3Fundacion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 20),
+      padding: const EdgeInsets.only(left: 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -222,8 +223,10 @@ class _Col3Fundacion extends StatelessWidget {
             'Escuela de iniciación deportiva',
           ].map((l) => Text(l, style: AppTextStyles.footerColLink)),
           const SizedBox(height: 28), // spacer entre secciones
-          Text('Informe fundación social gane',
-              style: AppTextStyles.footerColTitle),
+          Text(
+            'Informe fundación social gane',
+            style: AppTextStyles.footerColTitle,
+          ),
           const SizedBox(height: 28), // spacer post sub-título
           ...const [
             'Estados Financieros',
@@ -252,7 +255,7 @@ class _Col4EticaLogos extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 20),
+      padding: const EdgeInsets.only(left: 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -269,26 +272,28 @@ class _Col4EticaLogos extends StatelessWidget {
 
           // ── SÍGUENOS ───────────────────────────────────────────────────
           Text('SÍGUENOS', style: AppTextStyles.footerColTitle),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           const _SocialRow(),
-          const SizedBox(height: 32), // gap íconos → GANE logo
+          const SizedBox(height: 28), // gap íconos → GANE logo
 
           // ── Logos regulatorios ─────────────────────────────────────────
-          // GANE logo — SVG 138×57px (Figma top:376)
-          SvgPicture.asset(
-            AppAssets.logoGane,
-            width: 138,
-            height: 57,
-            fit: BoxFit.contain,
+          // GANE logo — max 138×57px, responsivo (Figma top:376)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 138, maxHeight: 57),
+            child: SvgPicture.asset(
+              AppAssets.logoGane,
+              fit: BoxFit.contain,
+              alignment: Alignment.centerLeft,
+            ),
           ),
           const SizedBox(height: 9), // gap GANE → Vigilado
 
-          // Vigilado Supersalud — 224×68px (Figma top:442)
-          _FooterLogo(url: AppAssets.logoVigilado, width: 224, height: 68),
+          // Vigilado Supersalud — max 224×68px, responsivo (Figma top:442)
+          _FooterLogo(maxWidth: 224, height: 68, url: AppAssets.logoVigilado),
           const SizedBox(height: 9), // gap Vigilado → Coljuegos
 
-          // Coljuegos — 224×73px (Figma top:519)
-          _FooterLogo(url: AppAssets.logoColjuegos, width: 224, height: 73),
+          // Coljuegos — max 224×73px, responsivo (Figma top:519)
+          _FooterLogo(maxWidth: 224, height: 73, url: AppAssets.logoColjuegos),
         ],
       ),
     );
@@ -304,16 +309,15 @@ class _SocialRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    // Wrap evita overflow horizontal en columnas estrechas (tablet/desktop angosto)
+    return Wrap(
+      spacing: 14,
+      runSpacing: 10,
       children: const [
         _SocialIcon(icon: Icons.facebook_rounded),
-        SizedBox(width: 9),
-        _SocialIcon(icon: Icons.linked_camera),
-        SizedBox(width: 9),
+        _SocialIcon(icon: Icons.work_outline_rounded), // LinkedIn placeholder
         _SocialIcon(icon: Icons.camera_alt_outlined),
-        SizedBox(width: 9),
         _SocialIcon(icon: Icons.play_circle_outline_rounded),
-        SizedBox(width: 9),
         _SocialIcon(icon: Icons.music_note_outlined),
       ],
     );
@@ -327,9 +331,16 @@ class _SocialIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 24,
-      height: 24,
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: const Color(0x80FFFFFF), // rgba(255,255,255,0.50)
+          width: 1.5,
+        ),
+      ),
       child: Icon(icon, color: AppColors.neutralWhite, size: 20),
     );
   }
@@ -340,27 +351,30 @@ class _SocialIcon extends StatelessWidget {
 class _FooterLogo extends StatelessWidget {
   const _FooterLogo({
     required this.url,
-    required this.width,
+    required this.maxWidth,
     required this.height,
   });
 
   final String url;
-  final double width;
+  final double maxWidth;
   final double height;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Image.asset(
-        url,
-        fit: BoxFit.contain,
-        alignment: Alignment.centerLeft,
-        errorBuilder: (_, __, ___) => Container(
-          decoration: BoxDecoration(
-            color: Colors.white12,
-            borderRadius: BorderRadius.circular(8),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: SizedBox(
+        width: double.infinity,
+        height: height,
+        child: Image.asset(
+          url,
+          fit: BoxFit.contain,
+          alignment: Alignment.centerLeft,
+          errorBuilder: (_, __, ___) => Container(
+            decoration: BoxDecoration(
+              color: Colors.white12,
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         ),
       ),
@@ -406,24 +420,198 @@ class _FooterItem {
   final String text;
 }
 
-// ── Layout mobile (columna única) ─────────────────────────────────────────────
+// ── Layout mobile: 3 columnas compactas con separadores ──────────────────────
+// Figma mobile: GENERAL | Empresa | FUNDACIÓN SOCIAL (col 4 oculta)
 
 class _FooterColumnsMobile extends StatelessWidget {
   const _FooterColumnsMobile();
 
   @override
   Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Expanded(child: _MobileCol1General()),
+          _MobileDivider(),
+          Expanded(child: _MobileCol2Empresa()),
+          _MobileDivider(),
+          Expanded(child: _MobileCol3Fundacion()),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileDivider extends StatelessWidget {
+  const _MobileDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      color: const Color(0x4DFFFFFF),
+    );
+  }
+}
+
+const _mTs = TextStyle(
+  fontFamily: 'Inter',
+  fontSize: 7.5,
+  fontWeight: FontWeight.w400,
+  color: Colors.white,
+  height: 1.55,
+);
+const _mTsTitle = TextStyle(
+  fontFamily: 'Inter',
+  fontSize: 8,
+  fontWeight: FontWeight.w700,
+  color: Colors.white,
+  height: 1.55,
+);
+
+class _MobileCol1General extends StatelessWidget {
+  const _MobileCol1General();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('GENERAL', style: _mTsTitle),
+        SizedBox(height: 4),
+        Text('Dirección principal', style: _mTs),
+        Text('Calle 13 No.4-25', style: _mTs),
+        Text('Edificio Carvajal', style: _mTs),
+        SizedBox(height: 6),
+        Text('Teléfonos (PBX):', style: _mTs),
+        Text('(602) 884 3434', style: _mTs),
+        SizedBox(height: 6),
+        Text('Correos:', style: _mTs),
+        Text('info@gane.com.co', style: _mTs),
+        Text('pqrs@gane.com.co', style: _mTs),
+        SizedBox(height: 6),
+        Text('Cali, Valle del Cauca.', style: _mTs),
+        Text('CONTÁCTANOS', style: _mTs),
+      ],
+    );
+  }
+}
+
+class _MobileCol2Empresa extends StatelessWidget {
+  const _MobileCol2Empresa();
+
+  static const _links = [
+    'Empresa',
+    'Ingresa a Gane Corporativo',
+    'Video Institucional',
+    'Campañas',
+    'Preguntas frecuentes',
+    'Pago premios',
+    'Puntos de servicios',
+    'Aviso de privacidad',
+    'Periódico Gane al día',
+    'Comunicados de presa',
+    'Sistemas de gestión de calidad',
+    'Estados financieros',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Col1General(),
-        const SizedBox(height: 24),
-        const _Col2Empresa(),
-        const SizedBox(height: 24),
-        _Col3Fundacion(),
-        const SizedBox(height: 24),
-        _Col4EticaLogos(),
+        for (final l in _links) Text(l, style: _mTs),
       ],
+    );
+  }
+}
+
+class _MobileCol3Fundacion extends StatelessWidget {
+  const _MobileCol3Fundacion();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('FUNDACIÓN SOCIAL', style: _mTsTitle),
+        Text('¿Quiénes somos?', style: _mTs),
+        Text('Ayudas sociales', style: _mTs),
+        Text('Políticas', style: _mTs),
+        Text('Educación contínua', style: _mTs),
+        Text('Salud', style: _mTs),
+        Text('Vivienda', style: _mTs),
+        Text('Recreación y deporte', style: _mTs),
+        Text('Infancia y adolescencia', style: _mTs),
+        Text('Cuidarte', style: _mTs),
+        Text('Escuela de iniciación deportiva', style: _mTs),
+        SizedBox(height: 8),
+        Text('Informe fundación social gane', style: _mTsTitle),
+        Text('Estados Financieros', style: _mTs),
+        Text('Informe Anual Datos Generales', style: _mTs),
+        Text('Informe del Revisor Fiscal', style: _mTs),
+      ],
+    );
+  }
+}
+
+// ── Bloque Copyright ─────────────────────────────────────────────────────────
+// Figma: bg #2C2E6F, h:84px desktop | reducido en mobile
+// Línea 1: Inter Bold 22/28 blanco
+// Línea 2: Regular + link subrayado
+
+class _FooterCopyright extends StatelessWidget {
+  const _FooterCopyright();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool mobile = constraints.maxWidth < 900;
+        return Container(
+          width: double.infinity,
+          color: const Color(0xFF2C2E6F),
+          padding: EdgeInsets.symmetric(
+            vertical: mobile ? 12 : 16,
+            horizontal: mobile ? 12 : 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Copyright © 2026 GANE ¡te facilita la vida! - Todos los derechos reservados |',
+                style: AppTextStyles.footerCopyright.copyWith(
+                  fontSize: mobile ? 9 : 22,
+                  height: mobile ? 1.4 : 28 / 22,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: mobile ? 4 : 6),
+              Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  Text(
+                    'Términos y condiciones GANE | ',
+                    style: AppTextStyles.footerColLink.copyWith(
+                      fontSize: mobile ? 8.5 : null,
+                    ),
+                  ),
+                  Text(
+                    'Políticas de privacidad web',
+                    style: AppTextStyles.footerColLink.copyWith(
+                      fontSize: mobile ? 8.5 : null,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.neutralWhite,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

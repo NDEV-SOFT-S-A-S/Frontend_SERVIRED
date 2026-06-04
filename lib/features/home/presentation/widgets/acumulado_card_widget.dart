@@ -55,19 +55,22 @@ class AcumuladoData {
 
 // ── Widget principal ──────────────────────────────────────────────────────────
 
-// Figma node 561:8103–8106 — "Tarjeta acumulados"
-// Tamaño: 340×470px
+// Figma desktop: 340×470px · rounded-16 · py-19 · px-33 · timer px-8
+// Figma mobile:  162×233px · rounded-8  · proporciones similares escaladas
 // backdrop-blur-25 · gradient rgba(44,46,111,0.5)→rgba(19,114,174,0.5)
-// border 1px rgba(173,70,255,0.3) · rounded-16
-// padding vertical: py-19 (el padding horizontal es por ítem, no global)
-//   - contenido:  px-33 aplicado en cada ítem
-//   - timer:      px-8  (→ timer w ≈ 324px, match Figma w-[323.328px])
-// Hover: glow amarillo externo, difuso, sin mover ni escalar la tarjeta
+// border 1px rgba(173,70,255,0.3)
+// Hover (solo desktop): glow amarillo externo difuso
 
 class AcumuladoCardWidget extends StatefulWidget {
-  const AcumuladoCardWidget({super.key, required this.data});
+  const AcumuladoCardWidget({
+    super.key,
+    required this.data,
+    this.compact = false,
+  });
 
   final AcumuladoData data;
+  /// compact=true en mobile (162×233), false en desktop (340×470)
+  final bool compact;
 
   @override
   State<AcumuladoCardWidget> createState() => _AcumuladoCardWidgetState();
@@ -97,50 +100,52 @@ class _AcumuladoCardWidgetState extends State<AcumuladoCardWidget> {
     super.dispose();
   }
 
+  bool get _compact => widget.compact;
+
   @override
   Widget build(BuildContext context) {
+    final double cardW = _compact ? 162.0 : 340.0;
+    final double cardH = _compact ? 233.0 : 470.0;
+    final double radius = _compact ? 8.0 : 16.0;
+    final double vPad = _compact ? 10.0 : 19.0;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: SizedBox(
-        width: 340,
-        height: 470,
+        width: cardW,
+        height: cardH,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            // Glow exterior — BlurStyle.outer pinta SOLO fuera del RRect.
-            // Al no haber color dentro del RRect, el BackdropFilter de la tarjeta
-            // no captura el glow y el gradiente interior mantiene su azul limpio.
             AnimatedOpacity(
               opacity: _isHovered ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 200),
-              child: const CustomPaint(
-                size: Size(340, 470),
-                painter: _CardGlowPainter(),
+              child: CustomPaint(
+                size: Size(cardW, cardH),
+                painter: _CardGlowPainter(radius: radius),
               ),
             ),
-            // Tarjeta — el BackdropFilter solo ve el fondo real de la página
             ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(radius),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                 child: Container(
-                  width: 340,
-                  height: 470,
+                  width: cardW,
+                  height: cardH,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [AppColors.cardBlueStart, AppColors.cardBlueEnd],
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(radius),
                     border: Border.all(
                       color: AppColors.cardBorderPurple,
                       width: 1,
                     ),
                   ),
-                  // Solo padding vertical — el horizontal se aplica por ítem
-                  padding: const EdgeInsets.symmetric(vertical: 19),
+                  padding: EdgeInsets.symmetric(vertical: vPad),
                   child: _buildContent(),
                 ),
               ),
@@ -162,8 +167,15 @@ class _AcumuladoCardWidgetState extends State<AcumuladoCardWidget> {
     }
   }
 
-  // ── Standard (tarjetas 1 & 2): logo top 135×63 + 2 bloques con subtítulo ───
+  // ── Standard (tarjetas 1 & 2) ────────────────────────────────────────────────
+  // Desktop: logo 135×63 · px-33 · subtítulo/monto/Millones
+  // Mobile:  logo 58×27  · px-8  · FittedBox escala
   Widget _buildStandard() {
+    final double logoPH = _compact ? 8.0 : 33.0;
+    final double logoW = _compact ? 58.0 : 135.0;
+    final double logoH = _compact ? 27.0 : 63.0;
+    final double logoR = _compact ? 5.0 : 10.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -175,48 +187,55 @@ class _AcumuladoCardWidgetState extends State<AcumuladoCardWidget> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Logo superior — fondo blanco 135×63, rounded-10
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 33),
+                  padding: EdgeInsets.symmetric(horizontal: logoPH),
                   child: Container(
-                    width: 135,
-                    height: 63,
+                    width: logoW,
+                    height: logoH,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(logoR),
                     ),
                     clipBehavior: Clip.hardEdge,
                     child: widget.data.topLogoUrl != null
                         ? Image.asset(
                             widget.data.topLogoUrl!,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const _LogoPlaceholder(),
+                            errorBuilder: (_, __, ___) =>
+                                const _LogoPlaceholder(),
                           )
                         : const _LogoPlaceholder(),
                   ),
                 ),
 
-                // Bloques de premio (×2)
                 for (final block in widget.data.blocks) ...[
                   Padding(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(_compact ? 5 : 10),
                     child: Text(
                       block.subtitle ?? '',
-                      style: AppTextStyles.acumuladoSubtitle,
+                      style: _compact
+                          ? AppTextStyles.acumuladoSubtitle
+                              .copyWith(fontSize: 8)
+                          : AppTextStyles.acumuladoSubtitle,
                       textAlign: TextAlign.center,
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 33),
+                    padding: EdgeInsets.symmetric(horizontal: logoPH),
                     child: Text(
                       block.amount,
-                      style: AppTextStyles.acumuladoAmount,
+                      style: _compact
+                          ? AppTextStyles.acumuladoAmount.copyWith(fontSize: 22)
+                          : AppTextStyles.acumuladoAmount,
                       textAlign: TextAlign.center,
                     ),
                   ),
                   Text(
                     'Millones',
-                    style: AppTextStyles.acumuladoMillones,
+                    style: _compact
+                        ? AppTextStyles.acumuladoMillones
+                            .copyWith(fontSize: 12)
+                        : AppTextStyles.acumuladoMillones,
                   ),
                 ],
               ],
@@ -224,31 +243,34 @@ class _AcumuladoCardWidgetState extends State<AcumuladoCardWidget> {
           ),
         ),
 
-        // Timer — px-8 para alcanzar ~324px (Figma w-[323.328px])
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: _TimerBox(remaining: _remaining),
+          padding: EdgeInsets.symmetric(horizontal: _compact ? 4 : 8),
+          child: _TimerBox(remaining: _remaining, compact: _compact),
         ),
       ],
     );
   }
 
-  // ── Large logo single (tarjeta 3): logo grande h-139 centrado + 1 bloque ───
-  // Figma: contenedor h-139 flex-col items-center justify-center
-  //        → bg blanco px-8 py-4 rounded-10, imagen 120×55 con sombra
+  // ── Large logo single (tarjeta 3) ────────────────────────────────────────────
   Widget _buildLargeLogoSingle() {
+    final double logoContainerH = _compact ? 65.0 : 139.0;
+    final double logoW = _compact ? 55.0 : 120.0;
+    final double logoH = _compact ? 25.0 : 55.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Logo grande — h-139 centrado, fondo blanco con sombra
         SizedBox(
-          height: 139,
+          height: logoContainerH,
           child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(
+                horizontal: _compact ? 4 : 8,
+                vertical: _compact ? 2 : 4,
+              ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(_compact ? 5 : 10),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.25),
@@ -260,8 +282,8 @@ class _AcumuladoCardWidgetState extends State<AcumuladoCardWidget> {
               child: widget.data.topLogoUrl != null
                   ? Image.asset(
                       widget.data.topLogoUrl!,
-                      width: 120,
-                      height: 55,
+                      width: logoW,
+                      height: logoH,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => const _LogoPlaceholder(),
                     )
@@ -270,25 +292,27 @@ class _AcumuladoCardWidgetState extends State<AcumuladoCardWidget> {
           ),
         ),
 
-        // Monto — Figma: h-72 flex-col justify-center 48px ExtraBold
         SizedBox(
-          height: 72,
+          height: _compact ? 34 : 72,
           child: Center(
             child: Text(
               widget.data.blocks.first.amount,
-              style: AppTextStyles.acumuladoAmount,
+              style: _compact
+                  ? AppTextStyles.acumuladoAmount.copyWith(fontSize: 22)
+                  : AppTextStyles.acumuladoAmount,
               textAlign: TextAlign.center,
             ),
           ),
         ),
 
-        // "Millones" — Figma: h-37 centrado
         SizedBox(
-          height: 37,
+          height: _compact ? 18 : 37,
           child: Center(
             child: Text(
               'Millones',
-              style: AppTextStyles.acumuladoMillones,
+              style: _compact
+                  ? AppTextStyles.acumuladoMillones.copyWith(fontSize: 12)
+                  : AppTextStyles.acumuladoMillones,
             ),
           ),
         ),
@@ -296,17 +320,14 @@ class _AcumuladoCardWidgetState extends State<AcumuladoCardWidget> {
         const Spacer(),
 
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: _TimerBox(remaining: _remaining),
+          padding: EdgeInsets.symmetric(horizontal: _compact ? 4 : 8),
+          child: _TimerBox(remaining: _remaining, compact: _compact),
         ),
       ],
     );
   }
 
-  // ── Dual logo (tarjeta 4): 2 bloques, cada uno con su propio logo ───────────
-  // Figma: MiLoto (h-65, img h-46) + $150 + Millones
-  //        ColorLoto (h-57, img h-40) + $1.760 + Millones
-  //        → Spacer → Timer
+  // ── Dual logo (tarjeta 4) ────────────────────────────────────────────────────
   Widget _buildDualLogo() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -317,40 +338,40 @@ class _AcumuladoCardWidgetState extends State<AcumuladoCardWidget> {
         const Spacer(),
 
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: _TimerBox(remaining: _remaining),
+          padding: EdgeInsets.symmetric(horizontal: _compact ? 4 : 8),
+          child: _TimerBox(remaining: _remaining, compact: _compact),
         ),
       ],
     );
   }
 
-  /// Un bloque logo+monto+Millones para la tarjeta 4
-  /// index 0 = MiLoto: containerH=65, imgH=46
-  /// index 1 = ColorLoto: containerH=57, imgH=40
-  ///
-  /// Los textos usan altura natural (acumuladoAmount≈48px, acumuladoMillones≈27px)
-  /// en lugar de SizedBox fijos, para evitar overflow del card (470-2×19=432px).
   Widget _buildDualLogoBlock(AcumuladoBlock block, int index) {
-    final containerH = index == 0 ? 65.0 : 57.0;
-    final imageH = index == 0 ? 46.0 : 40.0;
+    final containerH = _compact
+        ? (index == 0 ? 32.0 : 28.0)
+        : (index == 0 ? 65.0 : 57.0);
+    final imageH = _compact
+        ? (index == 0 ? 22.0 : 18.0)
+        : (index == 0 ? 46.0 : 40.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Contenedor logo con altura fija para el centrado vertical de Figma
         SizedBox(
           height: containerH,
           child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(
+                horizontal: _compact ? 4 : 8,
+                vertical: _compact ? 2 : 4,
+              ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(_compact ? 5 : 10),
               ),
               child: block.logoUrl != null
                   ? Image.asset(
                       block.logoUrl!,
-                      width: 120,
+                      width: _compact ? 55.0 : 120.0,
                       height: imageH,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => const _LogoPlaceholder(),
@@ -360,37 +381,38 @@ class _AcumuladoCardWidgetState extends State<AcumuladoCardWidget> {
           ),
         ),
 
-        // Monto — altura natural: fontSize 48 × height 1.0 ≈ 48px
         Text(
           block.amount,
-          style: AppTextStyles.acumuladoAmount,
+          style: _compact
+              ? AppTextStyles.acumuladoAmount.copyWith(fontSize: 22)
+              : AppTextStyles.acumuladoAmount,
           textAlign: TextAlign.center,
         ),
 
-        // "Millones" — altura natural: fontSize 25 × height 27/25 ≈ 27px
         Text(
           'Millones',
-          style: AppTextStyles.acumuladoMillones,
+          style: _compact
+              ? AppTextStyles.acumuladoMillones.copyWith(fontSize: 12)
+              : AppTextStyles.acumuladoMillones,
         ),
       ],
     );
   }
 }
 
-// ── Glow exterior de la tarjeta en estado activo ─────────────────────────────
+// ── Glow exterior de la tarjeta ───────────────────────────────────────────────
 
-// BlurStyle.outer → pinta el halo SOLO fuera del RRect, dejando el interior
-// completamente transparente. Así el BackdropFilter de la tarjeta no captura
-// el color amarillo y el gradiente interior permanece azul sin contaminación.
 class _CardGlowPainter extends CustomPainter {
-  const _CardGlowPainter();
+  const _CardGlowPainter({this.radius = 16});
+
+  final double radius;
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Offset.zero & size,
-        const Radius.circular(16),
+        Radius.circular(radius),
       ),
       Paint()
         ..color = AppColors.navActiveYellow
@@ -399,7 +421,7 @@ class _CardGlowPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_CardGlowPainter old) => false;
+  bool shouldRepaint(_CardGlowPainter old) => old.radius != radius;
 }
 
 // ── Logo placeholder ──────────────────────────────────────────────────────────
@@ -417,14 +439,16 @@ class _LogoPlaceholder extends StatelessWidget {
 
 // ── Caja "Próximo sorteo" + countdown ─────────────────────────────────────────
 
-// Figma: bg rgba(16,90,136,0.74) · h-124 · rounded-10 · pt-16 px-16 · gap-8
-// Label row: Icon 16×16 + texto Inter Regular 14px white
-// Columnas:  bg #fafafa · h-64 · rounded-10 · pt-8 px-8
+// Desktop: h-124 · rounded-10 · pt-16 px-16 · gap-8
+//   Label: Icon 16×16 + texto 14px · Columnas h-64 · número 24px · label 12px
+// Mobile:  h-56  · rounded-5  · pt-3  px-8  · gap-4
+//   Label: Icon 8×8  + texto 8px  · Columnas h-34 · número 10px · label 6px
 
 class _TimerBox extends StatelessWidget {
-  const _TimerBox({required this.remaining});
+  const _TimerBox({required this.remaining, this.compact = false});
 
   final Duration remaining;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -433,36 +457,59 @@ class _TimerBox extends StatelessWidget {
     final s = remaining.inSeconds.remainder(60);
 
     return Container(
-      height: 124,
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+      height: compact ? 56 : 124,
+      padding: compact
+          ? const EdgeInsets.only(left: 8, right: 8, top: 3)
+          : const EdgeInsets.only(left: 16, right: 16, top: 16),
       decoration: BoxDecoration(
         color: AppColors.timerBoxBg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(compact ? 5 : 10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Label "Próximo sorteo" — Icon 16×16 + texto 14px
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.access_time_rounded,
-                size: 16,
+                size: compact ? 8 : 16,
                 color: AppColors.neutralWhite,
               ),
-              const SizedBox(width: 8),
-              Text('Próximo sorteo', style: AppTextStyles.timerProximo),
+              SizedBox(width: compact ? 4 : 8),
+              Text(
+                'Próximo sorteo',
+                style: compact
+                    ? AppTextStyles.timerProximo.copyWith(fontSize: 8)
+                    : AppTextStyles.timerProximo,
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Tres columnas Horas / Mins / Secs
+          SizedBox(height: compact ? 4 : 8),
           Row(
             children: [
-              Expanded(child: _TimerColumn(value: h, label: 'Horas')),
-              const SizedBox(width: 8),
-              Expanded(child: _TimerColumn(value: m, label: 'Mins')),
-              const SizedBox(width: 8),
-              Expanded(child: _TimerColumn(value: s, label: 'Secs')),
+              Expanded(
+                child: _TimerColumn(
+                  value: h,
+                  label: 'Horas',
+                  compact: compact,
+                ),
+              ),
+              SizedBox(width: compact ? 4 : 8),
+              Expanded(
+                child: _TimerColumn(
+                  value: m,
+                  label: 'Mins',
+                  compact: compact,
+                ),
+              ),
+              SizedBox(width: compact ? 4 : 8),
+              Expanded(
+                child: _TimerColumn(
+                  value: s,
+                  label: 'Secs',
+                  compact: compact,
+                ),
+              ),
             ],
           ),
         ],
@@ -471,41 +518,51 @@ class _TimerBox extends StatelessWidget {
   }
 }
 
-// Figma: bg #fafafa · h-64 · rounded-10 · pt-8 px-8
-// Número: Inter Bold 24px h-32 leading-32 #1372ae
-// Label:  Inter Regular 12px h-16 leading-16 #1372ae
+// Desktop: bg #fafafa · h-64 · rounded-10 · número 24px · label 12px
+// Mobile:  bg #fafafa · h-34 · rounded-5  · número 10px · label 6px
 
 class _TimerColumn extends StatelessWidget {
-  const _TimerColumn({required this.value, required this.label});
+  const _TimerColumn({
+    required this.value,
+    required this.label,
+    this.compact = false,
+  });
 
   final int value;
   final String label;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 64,
-      padding: const EdgeInsets.only(top: 8, left: 8, right: 8),
+      height: compact ? 34 : 64,
+      padding: compact
+          ? const EdgeInsets.only(top: 8, left: 4, right: 4)
+          : const EdgeInsets.only(top: 8, left: 8, right: 8),
       decoration: BoxDecoration(
         color: AppColors.grey50,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(compact ? 5 : 10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 32,
+            height: compact ? 15 : 32,
             child: Text(
               value.toString().padLeft(2, '0'),
-              style: AppTextStyles.timerNumber,
+              style: compact
+                  ? AppTextStyles.timerNumber.copyWith(fontSize: 10)
+                  : AppTextStyles.timerNumber,
               textAlign: TextAlign.center,
             ),
           ),
           SizedBox(
-            height: 16,
+            height: compact ? 6 : 16,
             child: Text(
               label,
-              style: AppTextStyles.timerLabel,
+              style: compact
+                  ? AppTextStyles.timerLabel.copyWith(fontSize: 6)
+                  : AppTextStyles.timerLabel,
               textAlign: TextAlign.center,
             ),
           ),
