@@ -259,7 +259,7 @@ class AppTextStyles {
         color: AppColors.neutralWhite,
       );
 
-  /// Título de columna del footer — Inter Bold 16/24, blanco
+  /// Título de columna del footer — Inter Bold 16/24, blanco (Figma exacto)
   static TextStyle get footerColTitle => GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w700,
@@ -267,8 +267,7 @@ class AppTextStyles {
         color: AppColors.neutralWhite,
       );
 
-  /// Link de columna del footer (cols 1, 3, 4) — Inter Regular 16/24, blanco
-  /// Figma: leading-[24px] en nodos I561:8146;179:726, 181:794, 185:814
+  /// Link de columna del footer (cols 1, 3, 4) — Inter Regular 16/24, blanco (Figma exacto)
   static TextStyle get footerColLink => GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,
@@ -276,8 +275,7 @@ class AppTextStyles {
         color: AppColors.neutralWhite,
       );
 
-  /// Link columna Empresa (col 2) — Inter Regular 16/41, blanco
-  /// Figma: nodo I561:8146;185:812 usa leading-[41px] en todos sus ítems
+  /// Link columna Empresa (col 2) — Inter Regular 16/41, blanco (Figma exacto)
   static TextStyle get footerEmpresaLink => GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,

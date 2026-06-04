@@ -181,6 +181,10 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
   // ── Auth required ────────────────────────────────────────────────────────
 
   void _showLoginModal(BuildContext ctx) {
+    if (MediaQuery.sizeOf(ctx).width < 600) {
+      ctx.push(AppRoutes.login);
+      return;
+    }
     showDialog<void>(
       context: ctx,
       barrierDismissible: false,
@@ -491,8 +495,9 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
         children: [
           // Figma: w-[144px] col con gap-[10px] — botones 144×36 rounded-[14px]
           _ModalidadButtons(selected: _modalidad, onSelect: onSelect),
-          const SizedBox(width: 24),
-          // Input ocupa el espacio restante
+          // Figma: gap-[170px] entre botones e inputs
+          const SizedBox(width: 170),
+          // El input ocupa el espacio restante: en tarjeta de 740px → ~426px ≈ w-[421px] Figma
           Expanded(child: _buildNumberInput()),
         ],
       );
@@ -571,15 +576,16 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
         ),
         const SizedBox(height: 10),
 
-        // Figma: "Agregar otra línea" — h-[24px] amarillo rounded-[4px]
+        // Figma: "Agregar otra línea" — h-[24px] w-[223px] amarillo rounded-[4px]
         GestureDetector(
           onTap: _addLine,
           child: Container(
+            width: 223,
             height: 24,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(color: const Color(0xFFFECA0C), borderRadius: BorderRadius.circular(4)),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.add_circle_outline, size: 16, color: Color(0xFF1372AE)),
                 const SizedBox(width: 5),

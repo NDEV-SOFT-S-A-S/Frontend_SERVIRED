@@ -61,33 +61,35 @@ class AcumuladosSectionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Encabezado "Acumulados" — Icon 32×32, Inter Bold 32px white ──────
-        // Figma node 561:8096: Icon 32×32, gap-8, texto bold 32px white
-        SectionHeaderWidget(
-          icon: SvgPicture.asset(
-            AppAssets.iconAcumulados,
-            width: 32,
-            height: 32,
-          ),
-          title: 'Acumulados',
-        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool mobile = constraints.maxWidth < 720;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Encabezado: en mobile con padding lateral 16px
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: mobile ? 16 : 0),
+              child: SectionHeaderWidget(
+                icon: SvgPicture.asset(
+                  AppAssets.iconAcumulados,
+                  width: mobile ? 24 : 32,
+                  height: mobile ? 24 : 32,
+                ),
+                title: 'Acumulados',
+              ),
+            ),
 
-        const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-        // ── 4 tarjetas ───────────────────────────────────────────────────────
-        // Ancho mínimo para desktop: 4×340 + 3×36 = 1468px
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth >= 1468) {
-              return const _WideCardRow();
-            }
-            return const _ScrollableCardRow();
-          },
-        ),
-      ],
+            // ── 4 tarjetas ────────────────────────────────────────────────
+            if (constraints.maxWidth >= 1468)
+              const _WideCardRow()
+            else
+              _ScrollableCardRow(mobile: mobile),
+          ],
+        );
+      },
     );
   }
 }
@@ -112,19 +114,27 @@ class _WideCardRow extends StatelessWidget {
 }
 
 // ── Tablet/Mobile: scroll horizontal ─────────────────────────────────────────
+// mobile=true → cards 162×233px compactas, gap 12px, padding lateral 16px
+// mobile=false → cards 340×470px normales, gap 36px
 class _ScrollableCardRow extends StatelessWidget {
-  const _ScrollableCardRow();
+  const _ScrollableCardRow({this.mobile = false});
+
+  final bool mobile;
 
   @override
   Widget build(BuildContext context) {
+    final double gap = mobile ? 12.0 : 36.0;
+    final double hPad = mobile ? 16.0 : 0.0;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(horizontal: hPad),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (int i = 0; i < _kAcumulados.length; i++) ...[
-            AcumuladoCardWidget(data: _kAcumulados[i]),
-            if (i < _kAcumulados.length - 1) const SizedBox(width: 36),
+            AcumuladoCardWidget(data: _kAcumulados[i], compact: mobile),
+            if (i < _kAcumulados.length - 1) SizedBox(width: gap),
           ],
         ],
       ),

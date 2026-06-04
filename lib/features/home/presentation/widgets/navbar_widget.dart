@@ -69,7 +69,14 @@ class NavbarWidget extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 720) {
-          return _NavbarMobile(isLoggedIn: isLoggedIn);
+          return _NavbarMobile(
+            isLoggedIn: isLoggedIn,
+            onLoginTap: onLoginTap,
+            onRegisterTap: onRegisterTap,
+            onInicioTap: onInicioTap,
+            onJuegosTap: onJuegosTap,
+            onResultadosTap: onResultadosTap,
+          );
         }
         return _NavbarDesktop(
           onLoginTap: onLoginTap,
@@ -204,41 +211,364 @@ class _NavbarDesktop extends StatelessWidget {
 }
 
 // ── Mobile ────────────────────────────────────────────────────────────────────
+// Figma node 561:12013 — h-[44px], backdrop-blur-15, bg-[rgba(15,88,134,0.2)]
+// Logo: 73×30px · Hamburger icon: 33×31px
 
-class _NavbarMobile extends StatelessWidget {
-  const _NavbarMobile({required this.isLoggedIn});
+class _NavbarMobile extends StatefulWidget {
+  const _NavbarMobile({
+    required this.isLoggedIn,
+    this.onLoginTap,
+    this.onRegisterTap,
+    this.onInicioTap,
+    this.onJuegosTap,
+    this.onResultadosTap,
+  });
 
   final bool isLoggedIn;
+  final VoidCallback? onLoginTap;
+  final VoidCallback? onRegisterTap;
+  final VoidCallback? onInicioTap;
+  final VoidCallback? onJuegosTap;
+  final VoidCallback? onResultadosTap;
+
+  @override
+  State<_NavbarMobile> createState() => _NavbarMobileState();
+}
+
+class _NavbarMobileState extends State<_NavbarMobile> {
+  OverlayEntry? _menuEntry;
+
+  void _openMenu() {
+    if (_menuEntry != null) return;
+    final overlay = Overlay.of(context);
+    final renderBox = context.findRenderObject() as RenderBox;
+    final navbarOffset = renderBox.localToGlobal(Offset.zero);
+    final navbarHeight = renderBox.size.height;
+    final screenWidth = renderBox.size.width;
+
+    _menuEntry = OverlayEntry(
+      builder: (_) => _MobileMenuDropdown(
+        top: navbarOffset.dy,
+        right: 8,
+        screenWidth: screenWidth,
+        navbarHeight: navbarHeight,
+        onClose: _closeMenu,
+        onLoginTap: widget.isLoggedIn
+            ? null
+            : () {
+                _closeMenu();
+                widget.onLoginTap?.call();
+              },
+        onRegisterTap: widget.isLoggedIn
+            ? null
+            : () {
+                _closeMenu();
+                widget.onRegisterTap?.call();
+              },
+        onInicioTap: () {
+          _closeMenu();
+          widget.onInicioTap?.call();
+        },
+        onJuegosTap: () {
+          _closeMenu();
+          widget.onJuegosTap?.call();
+        },
+        onResultadosTap: () {
+          _closeMenu();
+          widget.onResultadosTap?.call();
+        },
+      ),
+    );
+    overlay.insert(_menuEntry!);
+  }
+
+  void _closeMenu() {
+    _menuEntry?.remove();
+    _menuEntry = null;
+  }
+
+  @override
+  void dispose() {
+    _closeMenu();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Figma: h-44, blur 15, bg rgba(15,88,134,0.2)
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
-          height: 64,
+          height: 44,
           width: double.infinity,
-          color: AppColors.navbarBg,
+          color: const Color(0x330F5886), // rgba(15,88,134,0.2)
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Logo: 73px ancho, ~30px alto (Figma node 561:12015)
               SvgPicture.asset(
                 AppAssets.logoGane,
-                height: 36,
-                fit: BoxFit.fitHeight,
+                width: 73,
+                fit: BoxFit.fitWidth,
               ),
               const Spacer(),
-              if (isLoggedIn)
-                // Avatar compacto en móvil
-                const _AvatarCircle(size: 36, avatarUrl: null, onTap: null)
+              if (widget.isLoggedIn)
+                _AvatarCircle(size: 32, avatarUrl: null, onTap: _openMenu)
               else
-                const Icon(
-                  Icons.menu_rounded,
-                  color: AppColors.neutralWhite,
-                  size: 28,
+                // Hamburger 33×31px (Figma node 561:12038)
+                GestureDetector(
+                  onTap: _openMenu,
+                  child: const SizedBox(
+                    width: 33,
+                    height: 31,
+                    child: Icon(
+                      Icons.menu_rounded,
+                      color: AppColors.neutralWhite,
+                      size: 26,
+                    ),
+                  ),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Dropdown menu mobile ──────────────────────────────────────────────────────
+// Figma node 561:12459
+// backdrop-blur-25 · bg-[rgba(15,88,134,0.5)] · h-290 · w-287 · rounded-8
+// Estructura:
+//   close row  (p-10, justify-end, circle-X 24×24 border blanco)
+//   content col (gap-9, items-start):
+//     buttons row (w-258, gap-8): "Inicia sesión" 125×28 | "Regístrate" 125×28
+//     links col  (p-10, gap-10, text-22, leading-48)
+
+class _MobileMenuDropdown extends StatelessWidget {
+  const _MobileMenuDropdown({
+    required this.top,
+    required this.right,
+    required this.screenWidth,
+    required this.navbarHeight,
+    required this.onClose,
+    this.onLoginTap,
+    this.onRegisterTap,
+    this.onInicioTap,
+    this.onJuegosTap,
+    this.onResultadosTap,
+  });
+
+  final double top;
+  final double right;
+  final double screenWidth;
+  final double navbarHeight;
+  final VoidCallback onClose;
+  final VoidCallback? onLoginTap;
+  final VoidCallback? onRegisterTap;
+  final VoidCallback? onInicioTap;
+  final VoidCallback? onJuegosTap;
+  final VoidCallback? onResultadosTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Tap fuera para cerrar
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: onClose,
+            behavior: HitTestBehavior.opaque,
+            child: const ColoredBox(color: Colors.transparent),
+          ),
+        ),
+        // Panel dropdown
+        Positioned(
+          top: top,
+          right: right,
+          // Material resetea DefaultTextStyle del Overlay → sin subrayados
+          child: Material(
+            color: Colors.transparent,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                child: Container(
+                  width: 287,
+                  height: 290,
+                  color: const Color(0x800F5886), // rgba(15,88,134,0.5)
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // ── Botón cerrar ──────────────────────────────────
+                      // Figma: p-10, justify-end, delete-circle 24×24
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: onClose,
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ── Contenido: gap-9, items-start ────────────────
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Botones row: w-258 (125+8+125), centrado
+                          SizedBox(
+                            width: 258,
+                            height: 28,
+                            child: Row(
+                              children: [
+                                _MenuAuthButton(
+                                  label: 'Inicia sesión',
+                                  bgColor: const Color(0xFFFAFAFA),
+                                  textColor: const Color(0xFF1372AE),
+                                  onTap: onLoginTap,
+                                ),
+                                const SizedBox(width: 8),
+                                _MenuAuthButton(
+                                  label: 'Regístrate',
+                                  bgColor: const Color(0xFFFDC700),
+                                  textColor: const Color(0xFF093048),
+                                  onTap: onRegisterTap,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 9),
+
+                          // Nav links: p-10, gap-10, text-22, leading-48
+                          Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _MenuNavLink(
+                                  label: 'Inicio',
+                                  color: const Color(0xFFFFCB3C),
+                                  onTap: onInicioTap,
+                                ),
+                                const SizedBox(height: 10),
+                                _MenuNavLink(
+                                  label: 'Juegos',
+                                  color: Colors.white,
+                                  onTap: onJuegosTap,
+                                ),
+                                const SizedBox(height: 10),
+                                _MenuNavLink(
+                                  label: 'Resultados',
+                                  color: Colors.white,
+                                  onTap: onResultadosTap,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Botón auth dentro del menú mobile
+class _MenuAuthButton extends StatelessWidget {
+  const _MenuAuthButton({
+    required this.label,
+    required this.bgColor,
+    required this.textColor,
+    this.onTap,
+  });
+
+  final String label;
+  final Color bgColor;
+  final Color textColor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 125,
+        height: 28,
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Link de nav dentro del menú mobile
+class _MenuNavLink extends StatelessWidget {
+  const _MenuNavLink({
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        height: 48,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 22,
+              fontWeight: FontWeight.w400,
+              color: color,
+              height: 1.0,
+              decoration: TextDecoration.none,
+            ),
           ),
         ),
       ),
