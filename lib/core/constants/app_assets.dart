@@ -93,6 +93,9 @@ abstract final class AppAssets {
   // Mismo archivo que juegoImg9 — "Chance Millonario Sorprendente"
   static const String bannerChanceMillonario = 'assets/images/juego_9.png';
 
+  // ── Pata Millonaria ───────────────────────────────────────────────────────
+  static const String bannerPataMillonaria = 'assets/images/banner-paramillonaria.png';
+
   // ── Dominguero ────────────────────────────────────────────────────────────
   static const String bannerDominguero  = 'assets/images/banner_dominguero.png';
   static const String refreshCircular   = 'assets/images/refresh-circular.svg';

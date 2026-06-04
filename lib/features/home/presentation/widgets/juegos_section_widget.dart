@@ -183,6 +183,7 @@ class JuegosSectionWidget extends StatelessWidget {
       case 2: return () => context.push(AppRoutes.superwin);
       case 3: return () => context.push(AppRoutes.dominguero);
       case 6: return () => context.push(AppRoutes.chanceMillonario);
+      case 7: return () => context.push(AppRoutes.pataMillonaria);
       default: return null;
     }
   }
@@ -277,6 +278,7 @@ class _JuegosRow extends StatelessWidget {
       case 2: return () => context.push(AppRoutes.superwin);
       case 3: return () => context.push(AppRoutes.dominguero);
       case 6: return () => context.push(AppRoutes.chanceMillonario);
+      case 7: return () => context.push(AppRoutes.pataMillonaria);
       default: return null;
     }
   }
