@@ -191,6 +191,18 @@ class _SparkleIcon extends StatelessWidget {
 class _JuegosGrid extends StatelessWidget {
   const _JuegosGrid();
 
+  static VoidCallback? _tapFor(BuildContext context, int idx) {
+    switch (idx) {
+      case 0:  return () => context.go(AppRoutes.pataMillonaria);
+      case 1:  return () => context.go(AppRoutes.dominguero);
+      case 2:  return () => context.go(AppRoutes.pagaTodo);
+      case 6:  return () => context.go(AppRoutes.chanceTradicional);
+      case 8:  return () => context.go(AppRoutes.chanceMillonario);
+      case 9:  return () => context.go(AppRoutes.superwin);
+      default: return null;
+    }
+  }
+
   static int _columns(double width) {
     if (width >= 1400) return 5;
     if (width >= 900) return 4;
@@ -224,15 +236,7 @@ class _JuegosGrid extends StatelessWidget {
                     child: JuegoCardWidget(
                       data: kJuegos[idx],
                       // Solo El Dominguero Millonario (índice 1) navega a su pantalla
-                      onTap: idx == 1
-                          ? () => context.go(AppRoutes.dominguero)
-                          : idx == 6
-                              ? () => context.go(AppRoutes.chanceTradicional)
-                              : idx == 8
-                                  ? () => context.go(AppRoutes.chanceMillonario)
-                                  : idx == 9
-                                      ? () => context.go(AppRoutes.superwin)
-                                      : null,
+                      onTap: _tapFor(context, idx),
                     ),
                   ),
                 ),

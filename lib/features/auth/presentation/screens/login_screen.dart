@@ -113,9 +113,11 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
+      listenWhen: (prev, curr) => prev.status != curr.status,
       listener: (context, state) {
         if (state.status == AuthStatus.success) {
           widget.onLoginSuccess();
+          context.read<AuthCubit>().clearAuthStatus();
         }
         if (state.status == AuthStatus.otpSent) {
           setState(() => _showRecoveryConfirmation = true);

@@ -10,6 +10,7 @@ import '../../features/juegos/presentation/screens/chance_tradicional_screen.dar
 import '../../features/juegos/presentation/screens/dominguero_screen.dart';
 import '../../features/juegos/presentation/screens/paga_todo_screen.dart';
 import '../../features/juegos/presentation/screens/superwin_screen.dart';
+import '../../features/juegos/presentation/screens/pata_millonaria_screen.dart';
 import '../../features/resultados/presentation/screens/resultados_screen.dart';
 import '../../shared/screens/placeholder_screen.dart';
 
@@ -26,6 +27,7 @@ class AppRoutes {
   static const String chanceMillonario  = '/juegos/chance-millonario';
   static const String chanceTradicional = '/juegos/chance-tradicional';
   static const String pagaTodo          = '/juegos/paga-todo';
+  static const String pataMillonaria    = '/juegos/pata-millonaria';
   static const String pagos = '/pagos';
   static const String wallet = '/wallet';
   static const String resultados = '/resultados';
@@ -37,6 +39,10 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.home,
     debugLogDiagnostics: false,
+    redirect: (context, state) {
+      if (state.uri.path == '/') return AppRoutes.home;
+      return null;
+    },
     routes: [
       GoRoute(
         path: AppRoutes.login,
@@ -93,6 +99,11 @@ class AppRouter {
         path: AppRoutes.pagaTodo,
         name: 'paga-todo',
         builder: (context, state) => const PagaTodoScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.pataMillonaria,
+        name: 'pata-millonaria',
+        builder: (context, state) => const PataMillonariaScreen(),
       ),
       GoRoute(
         path: AppRoutes.resultados,

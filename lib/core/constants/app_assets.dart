@@ -83,6 +83,12 @@ abstract final class AppAssets {
   static const String bannerDominguero  = 'assets/images/banner_dominguero.png';
   static const String refreshCircular   = 'assets/images/refresh-circular.svg';
 
+  // ── Pata Millonaria (HU-PM001) ───────────────────────────────────────────
+  /// Banner horizontal de La Pata Millonaria (pata con sombrero rosa + monedas)
+  static const String bannerPataMillonaria =
+      'assets/images/b5a8d0e4f0b8de6fd40dc505745f1360db373c8b.png';
+  static const double bannerPataMillonariaAspectRatio = 1492 / 300;
+
   // ── Chance Tradicional (HU-PD-003) ───────────────────────────────────────
   // Figma node 762:3908 — banner ChanCe (746×150)
   static const String frameChanceTradicional = 'assets/images/frame_chance_tradicional.png';

@@ -102,6 +102,14 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  /// Evita que un modal de login reaccione de nuevo a un login ya completado.
+  void clearAuthStatus() {
+    if (state.status == AuthStatus.success ||
+        state.status == AuthStatus.otpSent) {
+      emit(state.copyWith(status: AuthStatus.initial));
+    }
+  }
+
   // Solo para builds con USE_MOCK=true — simula sesión activa sin I/O.
   void emitMockSuccess() {
     emit(state.copyWith(status: AuthStatus.success));

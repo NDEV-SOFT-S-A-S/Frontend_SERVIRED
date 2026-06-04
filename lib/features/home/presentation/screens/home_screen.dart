@@ -19,6 +19,12 @@ import '../widgets/navbar_widget.dart';
 import '../widgets/resultados_carousel_widget.dart';
 import '../widgets/section_header_widget.dart';
 
+void _popDialog(BuildContext dialogContext) {
+  if (!dialogContext.mounted) return;
+  final navigator = Navigator.of(dialogContext);
+  if (navigator.canPop()) navigator.pop();
+}
+
 void _showLoginModal(BuildContext context) {
   showDialog<void>(
     context: context,
@@ -29,14 +35,14 @@ void _showLoginModal(BuildContext context) {
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: SingleChildScrollView(
         child: LoginFormWidget(
-          onClose: () => Navigator.pop(dialogContext),
-          onLoginSuccess: () => Navigator.pop(dialogContext),
+          onClose: () => _popDialog(dialogContext),
+          onLoginSuccess: () => _popDialog(dialogContext),
           onRegisterRequested: () {
-            Navigator.pop(dialogContext);
+            _popDialog(dialogContext);
             _showRegisterModal(context);
           },
           onRecoveryRequested: (identifier) {
-            Navigator.pop(dialogContext);
+            _popDialog(dialogContext);
             dialogContext.push(
               AppRoutes.otpVerification,
               extra: {
@@ -61,9 +67,9 @@ void _showRegisterModal(BuildContext context) {
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: SingleChildScrollView(
         child: RegisterFlowWidget(
-          onClose: () => Navigator.pop(dialogContext),
+          onClose: () => _popDialog(dialogContext),
           onLoginRequested: () {
-            Navigator.pop(dialogContext);
+            _popDialog(dialogContext);
             _showLoginModal(context);
           },
         ),

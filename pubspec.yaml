@@ -67,3 +67,4 @@ flutter:
     - .env.prod
     - assets/images/
     - assets/icons/
+    - assets/images/banner_pata_millonaria.png

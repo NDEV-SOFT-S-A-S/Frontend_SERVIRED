@@ -20,8 +20,8 @@ const kJuegos = [
   // ── Fila 1 ────────────────────────────────────────────────────────────────
   JuegoData(
     imageUrl: AppAssets.juegoImg1,   // La Pata Millonaria
-    label: 'Apostá desde 2.000 y ganá hasta',
-    monto: '\$118.278.000',
+    label: 'Apostá desde \$1.000 y ganá hasta',
+    monto: '\$34.979.748',   // Premio Mayor: $3.000 × 75% × 18.500 / 1,19
   ),
   JuegoData(
     imageUrl: AppAssets.juegoImg2,   // El Domingueño Millonario
@@ -149,15 +149,14 @@ class _JuegosRow extends StatelessWidget {
   }
 
   VoidCallback? _tapFor(BuildContext context, int globalIndex) {
-    if (globalIndex == 1) {
-      return () => context.push(AppRoutes.dominguero);
+    switch (globalIndex) {
+      case 0:  return () => context.push(AppRoutes.pataMillonaria);
+      case 1:  return () => context.push(AppRoutes.dominguero);
+      case 2:  return () => context.push(AppRoutes.pagaTodo);
+      case 6:  return () => context.push(AppRoutes.chanceTradicional);
+      case 8:  return () => context.push(AppRoutes.chanceMillonario);
+      case 9:  return () => context.push(AppRoutes.superwin);
+      default: return null;
     }
-    if (globalIndex == 2) {
-      return () => context.push(AppRoutes.pagaTodo);
-    }
-    if (globalIndex == 9) {
-      return () => context.push(AppRoutes.superwin);
-    }
-    return null;
   }
 }
