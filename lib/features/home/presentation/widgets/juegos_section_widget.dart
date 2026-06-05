@@ -196,13 +196,15 @@ class JuegosSectionWidget extends StatelessWidget {
 
   // Ruta interna del juego según su índice global.
   // null → juego aún sin pantalla implementada.
-  String? _routeFor(int i) {
+  VoidCallback? _routeFor(BuildContext context, int i) {
     switch (i) {
-      case 0: return AppRoutes.chanceTradicional;
-      case 1: return AppRoutes.pagaTodo;
-      case 2: return AppRoutes.superwin;
-      case 3: return AppRoutes.dominguero;
-      case 6: return AppRoutes.chanceMillonario;
+      case 0: return () => context.push(AppRoutes.chanceTradicional);
+      case 1: return () => context.push(AppRoutes.pagaTodo);
+      case 2: return () => context.push(AppRoutes.superwin);
+      case 3: return () => context.push(AppRoutes.dominguero);
+      case 6: return () => context.push(AppRoutes.chanceMillonario);
+      case 7: return () => context.push(AppRoutes.pataMillonaria);
+      case 9: return () => context.push(AppRoutes.balotoRevancha);
       default: return null;
     }
   }
@@ -212,7 +214,7 @@ class JuegosSectionWidget extends StatelessWidget {
   //   · Con sesión + ruta → navega al juego.
   //   · Con sesión + sin ruta → no hace nada (juego no implementado aún).
   VoidCallback _tapFor(BuildContext context, int i) {
-    final route = _routeFor(i);
+    final route = _routeFor(context, i);
     return () {
       final s = context.read<AuthCubit>().state;
       final isLoggedIn = s.user != null ||
@@ -224,7 +226,7 @@ class JuegosSectionWidget extends StatelessWidget {
         return;
       }
 
-      if (route != null) context.push(route);
+      if (route != null) route();
     };
   }
 }

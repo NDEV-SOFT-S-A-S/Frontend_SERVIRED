@@ -96,6 +96,9 @@ abstract final class AppAssets {
   // Mismo archivo que juegoImg9 — "Chance Millonario Sorprendente"
   static const String bannerChanceMillonario = 'assets/images/juego_9.png';
 
+  // ── Pata Millonaria ───────────────────────────────────────────────────────
+  static const String bannerPataMillonaria = 'assets/images/banner-paramillonaria.png';
+
   // ── Dominguero ────────────────────────────────────────────────────────────
   static const String bannerDominguero  = 'assets/images/banner_dominguero.png';
   static const String refreshCircular   = 'assets/images/refresh-circular.svg';
@@ -104,6 +107,10 @@ abstract final class AppAssets {
   static const String frameResultados = 'assets/images/frame_resultados.png';
   static const String iconCopa        = 'assets/images/Icon_copa.svg';
   static const String iconCalendario  = 'assets/images/calendar.svg';
+
+  // ── Baloto / Revancha ─────────────────────────────────────────────────────
+  static const String bannerBalotoRevancha = 'assets/images/Banner-Baloto-Rebancha.png';
+  static const String baloteraTube         = 'assets/images/balotera_tube.png';
 
   // ── Chance Tradicional (HU-PD-003) ───────────────────────────────────────
   // Figma node 762:3908 — banner ChanCe (746×150)

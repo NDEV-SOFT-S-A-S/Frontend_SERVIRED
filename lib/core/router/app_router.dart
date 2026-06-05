@@ -10,9 +10,12 @@ import '../../features/juegos/presentation/screens/chance_tradicional_screen.dar
 import '../../features/juegos/presentation/screens/dominguero_screen.dart';
 import '../../features/juegos/presentation/screens/paga_todo_screen.dart';
 import '../../features/juegos/presentation/screens/superwin_screen.dart';
+import '../../features/juegos/presentation/screens/pata_millonaria_screen.dart';
+import '../../features/juegos/presentation/screens/baloto_revancha_screen.dart';
 import '../../features/resultados/presentation/screens/resultados_screen.dart';
 import '../../features/resultados/presentation/screens/historial_resultados_screen.dart';
 import '../../features/home/presentation/widgets/resultado_card_widget.dart';
+import '../../features/carrito/presentation/screens/carrito_screen.dart';
 import '../../shared/screens/placeholder_screen.dart';
 
 class AppRoutes {
@@ -28,6 +31,9 @@ class AppRoutes {
   static const String chanceMillonario  = '/juegos/chance-millonario';
   static const String chanceTradicional = '/juegos/chance-tradicional';
   static const String pagaTodo          = '/juegos/paga-todo';
+  static const String pataMillonaria    = '/juegos/pata-millonaria';
+  static const String balotoRevancha    = '/juegos/baloto-revancha';
+  static const String carrito           = '/carrito';
   static const String pagos = '/pagos';
   static const String wallet = '/wallet';
   static const String resultados = '/resultados';
@@ -98,6 +104,16 @@ class AppRouter {
         builder: (context, state) => const PagaTodoScreen(),
       ),
       GoRoute(
+        path: AppRoutes.pataMillonaria,
+        name: 'pata-millonaria',
+        builder: (context, state) => const PataMillonariaScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.balotoRevancha,
+        name: 'baloto-revancha',
+        builder: (context, state) => const BalotoRevanchaScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.resultados,
         name: 'resultados',
         builder: (context, state) => const ResultadosScreen(),
@@ -108,6 +124,14 @@ class AppRouter {
         builder: (context, state) {
           final loteria = state.extra as ResultadoData;
           return HistorialResultadosScreen(loteria: loteria);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.carrito,
+        name: 'carrito',
+        builder: (context, state) {
+          final items = state.extra as List<CarritoItem>? ?? [];
+          return CarritoScreen(items: items);
         },
       ),
       GoRoute(
