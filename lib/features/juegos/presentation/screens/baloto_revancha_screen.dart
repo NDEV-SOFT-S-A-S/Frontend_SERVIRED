@@ -3,6 +3,7 @@
 // Módulo: Aplicación Móvil
 // Versión: 1.0.0.0 – 24/04/2026
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../carrito/presentation/screens/carrito_screen.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
@@ -127,12 +129,21 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
   bool _modoAutomatico = false;
   final Set<int> _balotas = {};
   int? _superbalota;
-  bool _conRevancha = false;
+  bool _conRevancha = true;
+
+  // ── Líneas guardadas (múltiples apuestas) ────────────────────────────────
+  final List<_LineaData> _lineasGuardadas = [];
 
   // ── Sorteos disponibles (HU-BAL001 RN: lun/mié/sáb) ────────────────────
   late final List<DateTime> _sorteosDisponibles;
   final Set<int> _sorteosSeleccionados =
       {}; // índices dentro de _sorteosDisponibles
+
+  // ── Animación balotera ───────────────────────────────────────────────────
+  bool _animandoBalotera = false;
+  List<int> _numerosVisibles = List.filled(6, 0); // índice 0-4 balotas, 5 super
+  List<bool> _balotasDetenidas = List.filled(6, false);
+  Timer? _timerRuleta;
 
   // ── Estado geo / compra ─────────────────────────────────────────────────
   _GeoEstado _geoEstado = _GeoEstado.pendiente;
@@ -146,7 +157,6 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
   // ── Errores de validación ────────────────────────────────────────────────
   String? _errorBalotas;
   String? _errorSuperbalota;
-  String? _errorSorteo;
 
   bool _confirmacionVisible = false;
 
@@ -176,9 +186,12 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
   int get _cantidadSorteos =>
       _sorteosSeleccionados.isEmpty ? 1 : _sorteosSeleccionados.length;
 
+  int get _totalLineas => _lineasGuardadas.length + 1;
+
   int get _totalPagar =>
       (_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)) *
-      _cantidadSorteos;
+      _cantidadSorteos *
+      _totalLineas;
 
   bool get _apuestaCompleta =>
       _balotas.length == _kBalotasRequeridas &&
@@ -212,15 +225,10 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     });
   }
 
-  void _toggleSorteo(int idx) {
-    setState(() {
-      if (_sorteosSeleccionados.contains(idx)) {
-        _sorteosSeleccionados.remove(idx);
-      } else {
-        _sorteosSeleccionados.add(idx);
-      }
-      _errorSorteo = null;
-    });
+  @override
+  void dispose() {
+    _timerRuleta?.cancel();
+    super.dispose();
   }
 
   void _generarAutomatico() {
@@ -228,14 +236,59 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     final pool = List.generate(_kBalotaMax, (i) => i + 1)..shuffle(rng);
     final superPool = List.generate(_kSuperbalotaMax, (i) => i + 1)
       ..shuffle(rng);
+    final finalesBalotas = pool.take(_kBalotasRequeridas).toList();
+    final finalSuper = superPool.first;
+
+    // Cancelar animación anterior si existe
+    _timerRuleta?.cancel();
+
     setState(() {
-      _balotas
-        ..clear()
-        ..addAll(pool.take(_kBalotasRequeridas));
-      _superbalota = superPool.first;
+      _balotas.clear();
+      _superbalota = null;
+      _animandoBalotera = true;
+      _numerosVisibles = List.filled(6, 1);
+      _balotasDetenidas = List.filled(6, false);
       _errorBalotas = null;
       _errorSuperbalota = null;
     });
+
+    // Rotar números aleatorios cada 60ms
+    _timerRuleta = Timer.periodic(const Duration(milliseconds: 60), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() {
+        for (int i = 0; i < 6; i++) {
+          if (!_balotasDetenidas[i]) {
+            _numerosVisibles[i] = i < 5
+                ? rng.nextInt(_kBalotaMax) + 1
+                : rng.nextInt(_kSuperbalotaMax) + 1;
+          }
+        }
+      });
+    });
+
+    // Detener cada bola secuencialmente con delay creciente
+    for (int i = 0; i < 6; i++) {
+      final idx = i;
+      Future.delayed(Duration(milliseconds: 600 + idx * 250), () {
+        if (!mounted) return;
+        setState(() {
+          _balotasDetenidas[idx] = true;
+          _numerosVisibles[idx] =
+              idx < 5 ? finalesBalotas[idx] : finalSuper;
+        });
+        // Cuando la última bola se detiene, guardar resultado
+        if (idx == 5) {
+          _timerRuleta?.cancel();
+          setState(() {
+            _animandoBalotera = false;
+            _balotas
+              ..clear()
+              ..addAll(finalesBalotas);
+            _superbalota = finalSuper;
+          });
+        }
+      });
+    }
   }
 
   // Limpiar (HU-BAL001 botón Limpiar)
@@ -243,15 +296,61 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     setState(() {
       _balotas.clear();
       _superbalota = null;
-      _conRevancha = false;
+      _conRevancha = true;
       _sorteosSeleccionados.clear();
       _errorBalotas = null;
       _errorSuperbalota = null;
-      _errorSorteo = null;
       _modoAutomatico = false;
       _confirmacionVisible = false;
       _compraEstado = _CompraEstado.idle;
       _ticketNumero = null;
+      _lineasGuardadas.clear();
+    });
+  }
+
+  // Agregar línea actual y crear nueva
+  void _agregarLinea() {
+    if (!_validar()) return;
+    setState(() {
+      _lineasGuardadas.add(_LineaData(
+        numero: _lineasGuardadas.length + 1,
+        balotas: _balotas.toList()..sort(),
+        superbalota: _superbalota!,
+      ));
+      _balotas.clear();
+      _superbalota = null;
+      _errorBalotas = null;
+      _errorSuperbalota = null;
+      _modoAutomatico = false;
+    });
+  }
+
+  // Eliminar línea guardada por índice
+  void _irAlCarrito() {
+    if (!_validar()) return;
+    // Construir la lista de ítems: guardadas + la línea actual
+    final todasLasLineas = [
+      ..._lineasGuardadas.map((l) => CarritoItem(
+            balotas: l.balotas,
+            superbalota: l.superbalota,
+            conRevancha: _conRevancha,
+            cantidadSorteos: _cantidadSorteos,
+            precioTotal: (_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)) * _cantidadSorteos,
+          )),
+      CarritoItem(
+        balotas: _balotas.toList()..sort(),
+        superbalota: _superbalota!,
+        conRevancha: _conRevancha,
+        cantidadSorteos: _cantidadSorteos,
+        precioTotal: (_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)) * _cantidadSorteos,
+      ),
+    ];
+    context.push(AppRoutes.carrito, extra: todasLasLineas);
+  }
+
+  void _eliminarLinea(int index) {
+    setState(() {
+      _lineasGuardadas.removeAt(index);
     });
   }
 
@@ -424,7 +523,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
         final isMobile = sw < 720;
 
         return Scaffold(
-          backgroundColor: AppColors.homeBackground,
+          backgroundColor: const Color(0xFF1372AE),
           bottomNavigationBar: isMobile ? _buildBottomNav(context) : null,
           body: Stack(
             children: [
@@ -462,14 +561,12 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
   }
 
   Widget _buildBodyPrincipal(BuildContext context, bool isMobile) {
-    // E4: sin sorteos disponibles
-    if (_sorteosDisponibles.isEmpty) {
-      return _buildSinSorteos();
-    }
-    // E6: geo bloqueada (se muestra banner pero bloquea compra)
+    if (_sorteosDisponibles.isEmpty) return _buildSinSorteos();
+
+    final isDesktop = !isMobile;
     final padding = isMobile
         ? const EdgeInsets.symmetric(horizontal: 12, vertical: 16)
-        : const EdgeInsets.symmetric(horizontal: 24, vertical: 24);
+        : const EdgeInsets.symmetric(horizontal: 65, vertical: 24);
 
     if (_compraEstado == _CompraEstado.exitosa && _ticketNumero != null) {
       return Padding(
@@ -488,25 +585,59 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
         padding: padding,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
+            constraints: BoxConstraints(maxWidth: isDesktop ? 720 : 560),
             child: _buildConfirmacion(context),
           ),
         ),
       );
     }
 
+    if (isMobile) {
+      return Padding(
+        padding: padding,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: Column(
+              children: [
+                _buildCardPrincipal(context, showCta: true),
+                const SizedBox(height: 16),
+                _buildApuestasAvanzadasCard(showCta: false),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Desktop: layout de dos columnas
     return Padding(
       padding: padding,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
+          constraints: const BoxConstraints(maxWidth: 1617),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildCardPrincipal(context),
-              const SizedBox(height: 16),
-              _buildApuestasAvanzadasCard(),
-              const SizedBox(height: 16),
-              _buildPlanPremios(),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 885,
+                      child: _buildCardPrincipal(context, showCta: false),
+                    ),
+                    const SizedBox(width: 40),
+                    Expanded(
+                      flex: 664,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 54),
+                        child: _buildApuestasAvanzadasCard(showCta: true),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -631,35 +762,28 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
 
   // ── Card principal del formulario ─────────────────────────────────────────
 
-  Widget _buildCardPrincipal(BuildContext context) {
+  Widget _buildCardPrincipal(BuildContext context, {bool showCta = true}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(30),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner con logo
           _buildBanner(),
-          const SizedBox(height: 12),
-          // Sección acumulados + días de sorteo (HU-BAL001)
-          _buildInfoJuego(),
-          const SizedBox(height: 16),
-          // Alerta geo si está pendiente
-          if (_geoEstado == _GeoEstado.bloqueada) _buildGeoBloqueadaBanner(),
-          // Sorteos (HU-BAL001 paso 3-4)
-          _buildPasoSorteos(),
-          const SizedBox(height: 16),
-          const _Divisor(),
-          const SizedBox(height: 16),
-          // Selección de números (HU-BAL001 paso 5-8)
+          const SizedBox(height: 25),
+          if (_geoEstado == _GeoEstado.bloqueada) ...[
+            _buildGeoBloqueadaBanner(),
+            const SizedBox(height: 25),
+          ],
           _buildPasoNumeros(),
-          const SizedBox(height: 20),
-          // Botones principales (HU-BAL001)
-          _buildBotonesAccion(context),
+          if (showCta) ...[
+            const SizedBox(height: 25),
+            _buildBotonesAccion(context),
+          ],
         ],
       ),
     );
@@ -671,10 +795,9 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Image.asset(
-        AppAssets.logoBalotoRevancha,
+        AppAssets.bannerBalotoRevancha,
         width: double.infinity,
-        height: 150,
-        fit: BoxFit.cover,
+        fit: BoxFit.fitWidth,
         errorBuilder: (_, __, ___) => Container(
           height: 150,
           decoration: const BoxDecoration(
@@ -809,61 +932,12 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     );
   }
 
-  // ── Paso sorteos — HU-BAL001 pasos 3-4 ───────────────────────────────────
-
-  Widget _buildPasoSorteos() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _PasoLabel(
-          numero: '1',
-          texto: 'Selecciona el sorteo o sorteos en que deseas participar',
-        ),
-        const SizedBox(height: 10),
-        // Próximo sorteo siempre visible como opción rápida
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: List.generate(_sorteosDisponibles.length, (i) {
-            final d = _sorteosDisponibles[i];
-            final seleccionado = _sorteosSeleccionados.contains(i) ||
-                (_sorteosSeleccionados.isEmpty && i == 0);
-            return _SorteoChip(
-              label:
-                  i == 0 ? 'Próx. ${_labelSorteo(d, i)}' : _labelSorteo(d, i),
-              isSelected: seleccionado,
-              onTap: () => _toggleSorteo(i),
-            );
-          }),
-        ),
-        if (_errorSorteo != null) ...[
-          const SizedBox(height: 4),
-          _ErrorText(_errorSorteo!),
-        ],
-        const SizedBox(height: 6),
-        Text(
-          'Puedes seleccionar hasta $_kMaxSorteosVenta sorteos. Valor total: ${_fmtCop(_totalPagar)}',
-          style: GoogleFonts.inter(
-              fontSize: 11,
-              color: const Color(0xFF6B7280),
-              fontStyle: FontStyle.italic),
-        ),
-      ],
-    );
-  }
-
   // ── Paso selección de números — HU-BAL001 pasos 5-8 ──────────────────────
 
   Widget _buildPasoNumeros() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _PasoLabel(
-          numero: '2',
-          texto: 'Selecciona tus números',
-        ),
-        const SizedBox(height: 12),
-        // Toggle Manual / Automática
         _buildModoToggle(),
         const SizedBox(height: 16),
         if (_modoAutomatico)
@@ -875,33 +949,47 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
   }
 
   Widget _buildModoToggle() {
-    return Center(
-      child: Container(
-        height: 34,
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0F0F0),
-          borderRadius: BorderRadius.circular(20),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'MANUAL',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF0C2577),
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _ModoBtn(
-              label: 'Manual',
-              isSelected: !_modoAutomatico,
-              onTap: () => setState(() => _modoAutomatico = false),
-            ),
-            _ModoBtn(
-              label: 'Automática',
-              isSelected: _modoAutomatico,
-              onTap: () {
-                setState(() => _modoAutomatico = true);
-                _generarAutomatico();
-              },
-            ),
-          ],
+        const SizedBox(width: 12),
+        Switch(
+          value: _modoAutomatico,
+          onChanged: (value) {
+            setState(() {
+              _modoAutomatico = value;
+              if (value) {
+                _balotas.clear();
+                _superbalota = null;
+              }
+              _errorBalotas = null;
+              _errorSuperbalota = null;
+            });
+          },
+          activeThumbColor: Colors.white,
+          activeTrackColor: const Color(0xFF0C2577),
+          inactiveThumbColor: Colors.white,
+          inactiveTrackColor: const Color(0xFFCBD5E1),
+          thumbColor: WidgetStateProperty.all(Colors.white),
         ),
-      ),
+        const SizedBox(width: 12),
+        Text(
+          'AUTOMÁTICO',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF0C2577),
+          ),
+        ),
+      ],
     );
   }
 
@@ -917,22 +1005,22 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             Expanded(
               flex: 54,
               child: Text(
-                'Selecciona 5 números (1-$_kBalotaMax)',
+                'Selecciona 5 números',
                 style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 19.5,
+                    fontWeight: FontWeight.w700,
                     color: const Color(0xFF0C2577)),
                 textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(width: 28),
+            const SizedBox(width: 40),
             Expanded(
               flex: 44,
               child: Text(
-                'Superbalota (1-$_kSuperbalotaMax)',
+                'Seleccione la superbalota',
                 style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 19.5,
+                    fontWeight: FontWeight.w700,
                     color: const Color(0xFF0C2577)),
                 textAlign: TextAlign.center,
               ),
@@ -940,105 +1028,258 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
           ],
         ),
         const SizedBox(height: 10),
+        if (_errorBalotas != null) ...[
+          const SizedBox(height: 4),
+          Center(child: _ErrorText(_errorBalotas!)),
+          const SizedBox(height: 10),
+        ],
+        if (_errorSuperbalota != null) ...[
+          const SizedBox(height: 4),
+          Center(child: _ErrorText(_errorSuperbalota!)),
+          const SizedBox(height: 10),
+        ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(flex: 54, child: _buildBalotasGrid()),
             Padding(
-              padding: const EdgeInsets.only(top: 36, left: 2, right: 2),
+              padding: const EdgeInsets.only(top: 36, left: 4, right: 4),
               child: const Icon(Icons.chevron_right,
-                  color: Color(0xFF0C2577), size: 26),
+                  color: Color(0xFF0C2577), size: 28),
             ),
             Expanded(flex: 44, child: _buildSuperbalotaGrid()),
           ],
         ),
-        if (_errorBalotas != null) ...[
-          const SizedBox(height: 6),
-          _ErrorText(_errorBalotas!),
-        ],
-        if (_errorSuperbalota != null) ...[
-          const SizedBox(height: 4),
-          _ErrorText(_errorSuperbalota!),
-        ],
         const SizedBox(height: 12),
-        _buildNumerosMostrados(),
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 291),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildNumerosMostrados(),
+            ],
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildBalotasGrid() {
-    return LayoutBuilder(builder: (context, constraints) {
-      const cols = 7;
-      const gap = 5.0;
-      final cell =
-          ((constraints.maxWidth - gap * (cols - 1)) / cols).clamp(20.0, 30.0);
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: List.generate(_kBalotaMax, (i) {
-          final n = i + 1;
-          return _BalotaCell(
-            numero: n,
-            isSelected: _balotas.contains(n),
-            isSuperbalota: false,
-            size: cell,
-            onTap: () => _toggleBalota(n),
-          );
-        }),
-      );
-    });
+    const gap = 10.0;
+    const cell = 28.0;
+    return Wrap(
+      spacing: gap,
+      runSpacing: gap,
+      children: List.generate(_kBalotaMax, (i) {
+        final n = i + 1;
+        return _BalotaCell(
+          numero: n,
+          isSelected: _balotas.contains(n),
+          isSuperbalota: false,
+          size: cell,
+          onTap: () => _toggleBalota(n),
+        );
+      }),
+    );
   }
 
   Widget _buildSuperbalotaGrid() {
-    return LayoutBuilder(builder: (context, constraints) {
-      const cols = 4;
-      const gap = 5.0;
-      final cell =
-          ((constraints.maxWidth - gap * (cols - 1)) / cols).clamp(20.0, 30.0);
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: List.generate(_kSuperbalotaMax, (i) {
-          final n = i + 1;
-          return _BalotaCell(
-            numero: n,
-            isSelected: _superbalota == n,
-            isSuperbalota: true,
-            size: cell,
-            onTap: () => _toggleSuperbalota(n),
-          );
-        }),
-      );
-    });
+    const gap = 10.0;
+    const cell = 28.0;
+    return Wrap(
+      spacing: gap,
+      runSpacing: gap,
+      children: List.generate(_kSuperbalotaMax, (i) {
+        final n = i + 1;
+        return _BalotaCell(
+          numero: n,
+          isSelected: _superbalota == n,
+          isSuperbalota: true,
+          size: cell,
+          onTap: () => _toggleSuperbalota(n),
+        );
+      }),
+    );
   }
 
   // ── Modo automático (HU-BAL001 flujo 5.1) ────────────────────────────────
 
   Widget _buildSeccionAutomatica() {
+    final tieneNumeros = _balotas.isNotEmpty && _superbalota != null;
     return Column(
       children: [
-        _buildNumerosMostrados(),
-        const SizedBox(height: 16),
+        _buildBalotera(),
+        const SizedBox(height: 8),
+        // Botones: JUGAR cuando vacío, AGREGAR + ↻ cuando hay números
         Center(
-          child: GestureDetector(
-            onTap: _generarAutomatico,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFECA0C),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+          child: tieneNumeros
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Botón AGREGAR — amarillo
+                    GestureDetector(
+                      onTap: _agregarLinea,
+                      child: Container(
+                        width: 191,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE30C),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'AGREGAR',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0D1B3E),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Botón ↻ refresh — gris circular
+                    GestureDetector(
+                      onTap: _generarAutomatico,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFFE5E7EB),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.refresh_rounded,
+                          color: Color(0xFF374151),
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : GestureDetector(
+                  onTap: _generarAutomatico,
+                  child: Container(
+                    width: 191,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53E3E),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'JUGAR',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+        const SizedBox(height: 14),
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 291),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [_buildNumerosMostrados()],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBalotera() {
+    // Durante animación usamos _numerosVisibles, si no los valores reales
+    List<int> displayBalotas;
+    int displaySuper;
+    List<bool> detenidas;
+
+    if (_animandoBalotera) {
+      displayBalotas = _numerosVisibles.sublist(0, 5);
+      displaySuper   = _numerosVisibles[5];
+      detenidas      = _balotasDetenidas;
+    } else {
+      final sorted = _balotas.isEmpty
+          ? List.filled(_kBalotasRequeridas, 0)
+          : (_balotas.toList()..sort());
+      displayBalotas = sorted;
+      displaySuper   = _superbalota ?? 0;
+      detenidas      = List.filled(6, !_balotas.isEmpty);
+    }
+
+    // Stack: imagen del tubo de fondo + bolas responsivas encima
+    return Center(
+      child: GestureDetector(
+        onTap: _animandoBalotera ? null : _generarAutomatico,
+        child: MouseRegion(
+          cursor: _animandoBalotera
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.click,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: double.infinity),
+            child: AspectRatio(
+              aspectRatio: 408 / 140,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  const Icon(Icons.refresh, size: 18, color: Color(0xFF0C2577)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Generar nuevos números',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0C2577),
+                  // Tubo de fondo
+                  Positioned.fill(
+                    child: Image.asset(
+                      AppAssets.baloteraTube,
+                      fit: BoxFit.fill,
+                    ),
+                  ),
+                  // Bolas responsivas: calculan su tamaño según el ancho del tubo
+                  Positioned.fill(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Las tapas metálicas ocupan ~28% del ancho (14% cada lado)
+                        final availableW = constraints.maxWidth * 0.72;
+                        const totalBalls = 6;
+                        const gaps = totalBalls - 1;
+                        // Tamaño de bola: deja 5px de gap entre cada una
+                        final ballSize =
+                            ((availableW - gaps * 5) / totalBalls)
+                                .clamp(16.0, 62.0);
+                        final fontSize = (ballSize * 0.38).clamp(8.0, 22.0);
+
+                        return Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ...List.generate(_kBalotasRequeridas, (i) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 2.5),
+                                  child: _BalotaCircle(
+                                    numero: displayBalotas[i],
+                                    isSuper: false,
+                                    detenida: detenidas[i],
+                                    size: ballSize,
+                                    fontSize: fontSize,
+                                  ),
+                                );
+                              }),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 2.5),
+                                child: _BalotaCircle(
+                                  numero: displaySuper,
+                                  isSuper: true,
+                                  detenida: detenidas[5],
+                                  size: ballSize,
+                                  fontSize: fontSize,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -1046,64 +1287,138 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
   // ── Números mostrados ─────────────────────────────────────────────────────
 
   Widget _buildNumerosMostrados() {
-    final balotas = _balotas.toList()..sort();
+    final balotasSorted = _balotas.toList()..sort();
+    final lineaNum = _lineasGuardadas.length + 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Líneas guardadas anteriores
+        ..._lineasGuardadas.asMap().entries.map((e) {
+          final idx = e.key;
+          final linea = e.value;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _buildLineaBar(
+              numero: linea.numero,
+              balotas: linea.balotas,
+              superbalota: linea.superbalota,
+              onDelete: () => _eliminarLinea(idx),
+              isEditing: false,
+            ),
+          );
+        }),
+        // Línea actual (en edición)
+        _buildLineaBar(
+          numero: lineaNum,
+          balotas: balotasSorted,
+          superbalota: _superbalota,
+          onAdd: _agregarLinea,
+          onDelete: _limpiar,
+          isEditing: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLineaBar({
+    required int numero,
+    required List<int> balotas,
+    required int? superbalota,
+    VoidCallback? onAdd,
+    required VoidCallback onDelete,
+    required bool isEditing,
+  }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      height: 66,
+      padding: const EdgeInsets.only(left: 20, right: 14, top: 10, bottom: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F0F0),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFFEBEBEB),
+        borderRadius: BorderRadius.circular(80),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      clipBehavior: Clip.none,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Text(
-                'Balotas:',
-                style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF4B5563)),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Wrap(
-                  spacing: 6,
-                  children: [
-                    for (final n in balotas)
-                      _NumCircle(numero: n, isSuper: false),
-                    for (int i = balotas.length; i < _kBalotasRequeridas; i++)
-                      _NumCircleEmpty(),
-                  ],
+          // Izquierda: label + números scrollables
+          Expanded(
+            child: Row(
+              children: [
+                Text(
+                  'LÍNEA $numero',
+                  style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0C2577)),
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ...balotas.map((n) => Padding(
+                              padding: const EdgeInsets.only(right: 3),
+                              child: _NumCircle(
+                                  numero: n, isSuper: false, size: 30),
+                            )),
+                        if (superbalota != null) ...[
+                          const SizedBox(width: 3),
+                          _NumCircle(
+                              numero: superbalota, isSuper: true, size: 30),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Text(
-                'Superbalota:',
-                style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF4B5563)),
+          // Derecha: BR + botones (siempre visibles)
+          if (_conRevancha) ...[
+            const SizedBox(width: 8),
+            Text(
+              'BR',
+              style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFF81515)),
+            ),
+          ],
+          const SizedBox(width: 8),
+          if (isEditing && onAdd != null) ...[
+            GestureDetector(
+              onTap: onAdd,
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                    color: Color(0xFF112044), shape: BoxShape.circle),
+                child: const Icon(Icons.add, color: Colors.white, size: 18),
               ),
-              const SizedBox(width: 8),
-              if (_superbalota != null)
-                _NumCircle(numero: _superbalota!, isSuper: true)
-              else
-                _NumCircleEmpty(),
-            ],
+            ),
+            const SizedBox(width: 8),
+          ],
+          GestureDetector(
+            onTap: onDelete,
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                  color: const Color(0xFF112044),
+                  borderRadius: BorderRadius.circular(19)),
+              child: const Icon(Icons.delete_outline,
+                  color: Colors.white, size: 18),
+            ),
           ),
+          const SizedBox(width: 6),
         ],
       ),
     );
@@ -1177,7 +1492,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
                   borderRadius: BorderRadius.circular(26)),
               elevation: 0,
             ),
-            onPressed: () => _continuarAConfirmacion(),
+            onPressed: () => _irAlCarrito(),
             child: Text(
               'Continuar',
               style: GoogleFonts.inter(
@@ -1211,14 +1526,13 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
 
   // ── Apuestas Avanzadas — Revancha + Sorteos ───────────────────────────────
 
-  Widget _buildApuestasAvanzadasCard() {
+  Widget _buildApuestasAvanzadasCard({bool showCta = false}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFF0C2577)),
       ),
       child: Column(
         children: [
@@ -1233,10 +1547,17 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          // Revancha (HU-BAL001 paso 9-10)
           _buildRevanchaSelector(),
+          const SizedBox(height: 12),
+          Text(
+            '¡Adelanta tus apuestas hasta en 9 sorteos y ahorra tiempo!',
+            style: GoogleFonts.inter(
+                fontSize: 14, color: const Color(0xFF0D2677)),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          _buildSorteosDropdown(),
           const SizedBox(height: 20),
-          // Resumen (HU-BAL001)
           Text(
             'Resumen de la apuesta',
             style: GoogleFonts.inter(
@@ -1248,41 +1569,112 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
           ),
           const SizedBox(height: 10),
           _buildResumenRow(
-            'Valor Baloto',
-            _fmtCop(_kPrecioBaloto),
+            'Total apuestas',
+            _fmtCop(_kPrecioBaloto * _cantidadSorteos),
             bg: const Color(0xFFF0F0F0),
           ),
-          if (_conRevancha) ...[
-            const SizedBox(height: 4),
-            _buildResumenRow(
-              'Valor Revancha',
-              '+ ${_fmtCop(_kPrecioRevancha)}',
-              bg: const Color(0xFFF7F7F7),
-            ),
-          ],
-          const SizedBox(height: 4),
-          _buildResumenRow(
-            'Subtotal por sorteo',
-            _fmtCop(_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)),
-            bg: const Color(0xFFF0F0F0),
-          ),
-          if (_cantidadSorteos > 1) ...[
-            const SizedBox(height: 4),
-            _buildResumenRow(
-              'Cantidad de sorteos',
-              '× $_cantidadSorteos',
-              bg: const Color(0xFFF7F7F7),
-            ),
-          ],
           const SizedBox(height: 4),
           _buildResumenRow(
             'Total a pagar',
             _fmtCop(_totalPagar),
-            bg: const Color(0xFFF0F0F0),
+            bg: const Color(0xFFF7F7F7),
             isBold: true,
           ),
+          if (_conRevancha) ...[
+            const SizedBox(height: 4),
+            _buildResumenRow(
+              'Total apuestas',
+              _fmtCop((_kPrecioBaloto + _kPrecioRevancha) * _cantidadSorteos),
+              bg: const Color(0xFFF0F0F0),
+            ),
+          ],
+          if (showCta) ...[
+            const SizedBox(height: 24),
+            const _Divisor(),
+            const SizedBox(height: 16),
+            _buildBotonesDesktop(),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildSorteosDropdown() {
+    final label = _sorteosSeleccionados.isEmpty
+        ? 'Jugada única'
+        : '$_cantidadSorteos sorteo${_cantidadSorteos > 1 ? "s" : ""}';
+    return Container(
+      width: double.infinity,
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: const Color(0xFF0C2577)),
+      ),
+      child: PopupMenuButton<int>(
+        onSelected: (v) => setState(() {
+          _sorteosSeleccionados.clear();
+          if (v > 1) {
+            for (int i = 0; i < v && i < _sorteosDisponibles.length; i++) {
+              _sorteosSeleccionados.add(i);
+            }
+          }
+        }),
+        offset: const Offset(0, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(label,
+                style: GoogleFonts.inter(
+                    fontSize: 16, color: const Color(0xFF0C2577))),
+            const SizedBox(width: 8),
+            const Icon(Icons.keyboard_arrow_down,
+                color: Color(0xFF0C2577), size: 20),
+          ],
+        ),
+        itemBuilder: (_) => [
+          for (int i = 1;
+              i <= _kMaxSorteosVenta && i <= _sorteosDisponibles.length;
+              i++)
+            PopupMenuItem(
+              value: i,
+              child: Text(
+                i == 1 ? 'Jugada única' : '$i sorteos',
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: const Color(0xFF0C2577)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBotonesDesktop() {
+    return Column(
+      children: [
+        SizedBox(
+          width: 434,
+          height: 47,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF43B75D),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26)),
+              elevation: 0,
+            ),
+            onPressed: _irAlCarrito,
+            child: Text(
+              'AÑADIR AL CARRITO',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1322,25 +1714,6 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
               ),
             ],
           ),
-          if (_conRevancha) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF9E6),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFFECA0C)),
-              ),
-              child: Text(
-                // HU-BAL001 flujo alterno 9.1.1
-                'Revancha participa con los mismos números de Baloto en un sorteo independiente. '
-                'Costo adicional: ${_fmtCop(_kPrecioRevancha)} por sorteo.',
-                style: GoogleFonts.inter(
-                    fontSize: 11, color: const Color(0xFF92400E)),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -1746,8 +2119,6 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        _buildPlanPremios(),
       ],
     );
   }
@@ -1906,7 +2277,7 @@ class _BalotaCell extends StatelessWidget {
         child: Text(
           numero.toString().padLeft(2, '0'),
           style: GoogleFonts.inter(
-            fontSize: size * 0.42,
+            fontSize: size * 0.57,
             fontWeight: FontWeight.w700,
             color: fg,
             height: 1,
@@ -1946,25 +2317,6 @@ class _NumCircle extends StatelessWidget {
   }
 }
 
-class _NumCircleEmpty extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 26,
-      height: 26,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFD1D5DB)),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        '?',
-        style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF9CA3AF)),
-      ),
-    );
-  }
-}
-
 class _RadioOpcion extends StatelessWidget {
   const _RadioOpcion({
     required this.label,
@@ -1988,9 +2340,7 @@ class _RadioOpcion extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: selected
-                    ? const Color(0xFFFECA0C)
-                    : const Color(0xFFD1D5DB),
+                color: const Color(0xFFFECA0C),
                 width: 2,
               ),
             ),
@@ -2017,78 +2367,6 @@ class _RadioOpcion extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ModoBtn extends StatelessWidget {
-  const _ModoBtn({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0C2577) : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : const Color(0xFF6B7280),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SorteoChip extends StatelessWidget {
-  const _SorteoChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0C2577) : const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color:
-                isSelected ? const Color(0xFF0C2577) : const Color(0xFFD1D5DB),
-          ),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : const Color(0xFF374151),
-          ),
-        ),
       ),
     );
   }
@@ -2251,9 +2529,28 @@ class _ErrorText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFFDA1414)),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEE2E2),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cancel_outlined,
+              color: Color(0xFFDC2626), size: 22),
+          const SizedBox(width: 10),
+          Text(
+            text,
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFFDC2626),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2264,6 +2561,74 @@ class _Divisor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Divider(color: Color(0xFFE5E7EB), height: 1, thickness: 1);
+  }
+}
+
+class _LineaData {
+  const _LineaData({
+    required this.numero,
+    required this.balotas,
+    required this.superbalota,
+  });
+  final int numero;
+  final List<int> balotas;
+  final int superbalota;
+}
+
+class _BalotaCircle extends StatelessWidget {
+  const _BalotaCircle({
+    required this.numero,
+    required this.isSuper,
+    this.detenida = true,
+    this.size = 36,
+    this.fontSize = 12,
+  });
+  final int numero;
+  final bool isSuper;
+  final bool detenida;
+  final double size;
+  final double fontSize; // false = girando (gris), true = detenida (color final)
+
+  @override
+  Widget build(BuildContext context) {
+    final tieneNumero = numero != 0;
+
+    // Colores según estado — extraídos del Figma node 1284-9405
+    final Color bgColor;
+    final Color textColor;
+
+    if (!tieneNumero || !detenida) {
+      // Vacío o girando: gris con texto oscuro
+      bgColor = const Color(0xFFB5B5B5);
+      textColor = const Color(0xFF4B5563);
+    } else if (isSuper) {
+      // Superbalota detenida: rojo con texto blanco
+      bgColor = const Color(0xFFD6002C);
+      textColor = Colors.white;
+    } else {
+      // Balota detenida: amarillo con texto azul oscuro
+      bgColor = const Color(0xFFFFE30C);
+      textColor = const Color(0xFF071647);
+    }
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: bgColor,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        numero == 0 ? '00' : numero.toString().padLeft(2, '0'),
+        style: GoogleFonts.inter(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+          height: 1,
+        ),
+      ),
+    );
   }
 }
 
