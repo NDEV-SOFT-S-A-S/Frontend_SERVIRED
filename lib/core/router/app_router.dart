@@ -11,6 +11,8 @@ import '../../features/juegos/presentation/screens/dominguero_screen.dart';
 import '../../features/juegos/presentation/screens/paga_todo_screen.dart';
 import '../../features/juegos/presentation/screens/superwin_screen.dart';
 import '../../features/resultados/presentation/screens/resultados_screen.dart';
+import '../../features/resultados/presentation/screens/historial_resultados_screen.dart';
+import '../../features/home/presentation/widgets/resultado_card_widget.dart';
 import '../../shared/screens/placeholder_screen.dart';
 
 class AppRoutes {
@@ -29,6 +31,7 @@ class AppRoutes {
   static const String pagos = '/pagos';
   static const String wallet = '/wallet';
   static const String resultados = '/resultados';
+  static const String historialResultados = '/resultados/historial';
 }
 
 class AppRouter {
@@ -98,6 +101,14 @@ class AppRouter {
         path: AppRoutes.resultados,
         name: 'resultados',
         builder: (context, state) => const ResultadosScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.historialResultados,
+        name: 'historial-resultados',
+        builder: (context, state) {
+          final loteria = state.extra as ResultadoData;
+          return HistorialResultadosScreen(loteria: loteria);
+        },
       ),
       GoRoute(
         path: AppRoutes.pagos,

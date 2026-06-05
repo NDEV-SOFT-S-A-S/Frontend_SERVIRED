@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../../shared/utils/auth_modal.dart';
 import 'juego_card_widget.dart';
 import 'section_header_widget.dart';
 
@@ -95,32 +98,47 @@ class JuegosSectionWidget extends StatelessWidget {
     );
   }
 
-  // ── Desktop: grid de filas ──────────────────────────────────────────────
+  // ── Desktop: grid unificado con Wrap ────────────────────────────────────
+  // El gap se calcula siempre a partir de 5 columnas, de modo que la fila 3
+  // (2 cards) empiece desde la izquierda con el mismo espaciado que las filas
+  // completas. WrapAlignment.start garantiza que no se centra ni se distribuye.
   Widget _buildDesktop(BuildContext context) {
-    final row1 = kJuegos.sublist(0, 5);
-    final row2 = kJuegos.sublist(5, 10);
-    final row3 = kJuegos.sublist(10, 12);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+      const int    cols      = 5;
+      const double cardWidth = 288.0;
+      final double gap =
+          (constraints.maxWidth - cols * cardWidth) / (cols - 1);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeaderWidget(
-          icon: SvgPicture.asset(
-            AppAssets.iconJuego,
-            width: 28,
-            height: 28,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeaderWidget(
+            icon: SvgPicture.asset(
+              AppAssets.iconJuego,
+              width: 28,
+              height: 28,
+            ),
+            title: 'Juegos',
+            showVerMas: true,
+            onVerMas: () => context.go(AppRoutes.juegos),
           ),
-          title: 'Juegos',
-          showVerMas: true,
-          onVerMas: () => context.go(AppRoutes.juegos),
-        ),
-        const SizedBox(height: 16),
-        _JuegosRow(juegos: row1, startIndex: 0),
-        const SizedBox(height: 16),
-        _JuegosRow(juegos: row2, startIndex: 5),
-        const SizedBox(height: 16),
-        _JuegosRow(juegos: row3, startIndex: 10, alignStart: true),
-      ],
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: WrapAlignment.start,
+            spacing: gap,
+            runSpacing: 16,
+            children: [
+              for (int i = 0; i < kJuegos.length; i++)
+                JuegoCardWidget(
+                  data: kJuegos[i],
+                  onTap: _tapFor(context, i),
+                ),
+            ],
+          ),
+        ],
+      );
+      },
     );
   }
 
@@ -176,108 +194,38 @@ class JuegosSectionWidget extends StatelessWidget {
     );
   }
 
-  VoidCallback? _tapFor(BuildContext context, int i) {
+  // Ruta interna del juego según su índice global.
+  // null → juego aún sin pantalla implementada.
+  String? _routeFor(int i) {
     switch (i) {
-      case 0: return () => context.push(AppRoutes.chanceTradicional);
-      case 1: return () => context.push(AppRoutes.pagaTodo);
-      case 2: return () => context.push(AppRoutes.superwin);
-      case 3: return () => context.push(AppRoutes.dominguero);
-      case 6: return () => context.push(AppRoutes.chanceMillonario);
+      case 0: return AppRoutes.chanceTradicional;
+      case 1: return AppRoutes.pagaTodo;
+      case 2: return AppRoutes.superwin;
+      case 3: return AppRoutes.dominguero;
+      case 6: return AppRoutes.chanceMillonario;
       default: return null;
     }
   }
-}
 
-class _JuegosRow extends StatelessWidget {
-  const _JuegosRow({
-    required this.juegos,
-    required this.startIndex,
-    this.alignStart = false,
-  });
+  // Siempre devuelve un callback:
+  //   · Sin sesión → abre modal de login directamente (sin pasos intermedios).
+  //   · Con sesión + ruta → navega al juego.
+  //   · Con sesión + sin ruta → no hace nada (juego no implementado aún).
+  VoidCallback _tapFor(BuildContext context, int i) {
+    final route = _routeFor(i);
+    return () {
+      final s = context.read<AuthCubit>().state;
+      final isLoggedIn = s.user != null ||
+          s.status == AuthStatus.success ||
+          s.status == AuthStatus.registrationSuccess;
 
-  final List<JuegoData> juegos;
-  // Índice global del primer elemento de esta fila dentro de kJuegos
-  final int startIndex;
-  // true → la fila no ocupa todo el ancho (ej. última fila de 2 cards)
-  final bool alignStart;
+      if (!isLoggedIn) {
+        showLoginRequired(context);
+        return;
+      }
 
-  /// Número de columnas según el ancho disponible.
-  /// En tablet y mobile las cards se distribuyen en Wrap para evitar overflow.
-  int _columnsFor(double w) {
-    if (w >= 1440) return 5;
-    if (w >= 1100) return 4;
-    if (w >= 800)  return 3;
-    if (w >= 520)  return 2;
-    return 1;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final cols = _columnsFor(w);
-
-        // ── Desktop: 5 columnas con gap proporcional ─────────────────────
-        // Cuando la fila tiene menos cards que columnas (ej. fila de 2),
-        // se alinea al inicio para no crear un gap visual excesivo.
-        if (cols >= 5 || juegos.length <= 2 && alignStart) {
-          final cardCount = juegos.length;
-          // gap entre cards = espacio restante dividido entre n-1 huecos
-          // mínimo 8px, máximo 80px
-          final gap = cardCount > 1
-              ? ((w - cardCount * 288.0) / (cardCount - 1)).clamp(8.0, 80.0)
-              : 0.0;
-
-          return Row(
-            mainAxisAlignment: alignStart
-                ? MainAxisAlignment.start
-                : MainAxisAlignment.spaceBetween,
-            children: [
-              for (int i = 0; i < cardCount; i++) ...[
-                if (alignStart && i > 0) SizedBox(width: gap),
-                JuegoCardWidget(
-                  data: juegos[i],
-                  onTap: _tapFor(context, startIndex + i),
-                ),
-                if (!alignStart && i < cardCount - 1) SizedBox(width: gap),
-              ],
-            ],
-          );
-        }
-
-        // ── Tablet / Mobile: Wrap sin scroll horizontal ───────────────────
-        // El gap entre cards se calcula para que exactamente `cols` quepan.
-        final gap = cols > 1
-            ? ((w - cols * 288.0) / (cols - 1)).clamp(8.0, 80.0)
-            : 0.0;
-
-        return Wrap(
-          spacing: gap,
-          runSpacing: 16,
-          children: [
-            for (int i = 0; i < juegos.length; i++)
-              JuegoCardWidget(
-                data: juegos[i],
-                onTap: _tapFor(context, startIndex + i),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  VoidCallback? _tapFor(BuildContext context, int globalIndex) {
-    // Orden: 0=Chance, 1=PagaTodo, 2=SuperWin, 3=Dominguero,
-    //        4=Quincenazo, 5=DobleChance, 6=ChanceMillonario, 7=PataMillonaria,
-    //        8=LaQuinta, 9=Baloto, 10=Miloto, 11=Colorloto
-    switch (globalIndex) {
-      case 0: return () => context.push(AppRoutes.chanceTradicional);
-      case 1: return () => context.push(AppRoutes.pagaTodo);
-      case 2: return () => context.push(AppRoutes.superwin);
-      case 3: return () => context.push(AppRoutes.dominguero);
-      case 6: return () => context.push(AppRoutes.chanceMillonario);
-      default: return null;
-    }
+      if (route != null) context.push(route);
+    };
   }
 }
+

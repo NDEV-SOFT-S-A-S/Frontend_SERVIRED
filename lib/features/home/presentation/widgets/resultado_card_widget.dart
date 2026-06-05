@@ -13,12 +13,16 @@ class ResultadoData {
     required this.nombre,
     required this.fecha,
     required this.numeros,
+    this.subtitulo,
+    this.serie,
   });
 
   final String? logoUrl;
   final String nombre;
   final String fecha;
-  final List<int> numeros; // 4 números del sorteo
+  final List<int> numeros;
+  final String? subtitulo;
+  final String? serie;
 }
 
 // ── Widget ─────────────────────────────────────────────────────────────────
