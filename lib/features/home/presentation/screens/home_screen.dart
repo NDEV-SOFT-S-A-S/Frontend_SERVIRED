@@ -6,11 +6,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
-import '../../../auth/presentation/screens/login_screen.dart';
-import '../../../auth/presentation/screens/otp_verification_screen.dart';
-import '../../../auth/presentation/screens/register_step1_screen.dart';
+import '../../../../shared/utils/auth_modal.dart';
 import '../widgets/acumulados_section_widget.dart';
 import '../widgets/banner_carousel_widget.dart';
 import '../widgets/footer_widget.dart';
@@ -18,66 +17,6 @@ import '../widgets/juegos_section_widget.dart';
 import '../widgets/navbar_widget.dart';
 import '../widgets/resultados_carousel_widget.dart';
 import '../widgets/section_header_widget.dart';
-
-void _showLoginModal(BuildContext context) {
-  // Mobile: navegar a LoginScreen (pantalla completa azul como Figma)
-  if (MediaQuery.sizeOf(context).width < 600) {
-    context.push(AppRoutes.login);
-    return;
-  }
-
-  // Desktop/web: modal card igual que antes
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.6),
-    builder: (dialogContext) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      child: SingleChildScrollView(
-        child: LoginFormWidget(
-          onClose: () => Navigator.pop(dialogContext),
-          onLoginSuccess: () => Navigator.pop(dialogContext),
-          onRegisterRequested: () {
-            Navigator.pop(dialogContext);
-            _showRegisterModal(context);
-          },
-          onRecoveryRequested: (identifier) {
-            Navigator.pop(dialogContext);
-            dialogContext.push(
-              AppRoutes.otpVerification,
-              extra: {
-                'destination': identifier,
-                'flow': OtpFlow.passwordRecovery,
-              },
-            );
-          },
-        ),
-      ),
-    ),
-  );
-}
-
-void _showRegisterModal(BuildContext context) {
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.6),
-    builder: (dialogContext) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      child: SingleChildScrollView(
-        child: RegisterFlowWidget(
-          onClose: () => Navigator.pop(dialogContext),
-          onLoginRequested: () {
-            Navigator.pop(dialogContext);
-            _showLoginModal(context);
-          },
-        ),
-      ),
-    ),
-  );
-}
 
 // Figma node 561:8092 — Landing page (sin logueo)
 // Figma node 561:10658 — Landing sesión ya iniciada (logueado)
@@ -144,10 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
             authState.status == AuthStatus.success ||
             authState.status == AuthStatus.registrationSuccess;
 
-        final double navbarHeight = _navbarHeight(
-          MediaQuery.of(context).size.width,
-          isLoggedIn,
-        );
+        final double screenW   = MediaQuery.sizeOf(context).width;
+        final bool   isMobile  = screenW < 720;
+        // Vista mobile autenticada: layout y orden de secciones diferente al desktop.
+        final bool   isMobAuth = isMobile && isLoggedIn;
+        final String firstName = _extractFirstName(authState.user);
+
+        final double navbarHeight = _navbarHeight(screenW, isLoggedIn);
 
         return Scaffold(
           backgroundColor: AppColors.homeBackground,
@@ -162,17 +104,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(height: navbarHeight),
 
                     // ── Contenido principal — max-width 1728, centrado ─────
-                    // Figma 561:8094: flex-col gap-[16px] px-[20px] py-[32px]
                     Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 1728),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // ── Saludo (solo mobile autenticado) ────────────
+                            if (isMobAuth) ...[
+                              const SizedBox(height: 16),
+                              _MobileGreeting(firstName: firstName),
+                            ],
+
                             // ── Banner carousel ──────────────────────────────
                             const SizedBox(height: 16),
-                            // Móvil: sin padding → banner edge-to-edge
-                            // Desktop: left:20 para el efecto peek del carrusel
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 return Padding(
@@ -184,38 +129,36 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             ),
 
-                            // ── Acumulados ───────────────────────────────────
-                            const SizedBox(height: 16),
-                            // Móvil: sin padding → el widget maneja su propio px-16
-                            // Desktop: px-20 para alineación con el resto
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                final bool isMobile =
-                                    constraints.maxWidth < 720;
-                                return Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isMobile ? 0 : 20,
-                                  ),
-                                  child: const AcumuladosSectionWidget(),
-                                );
-                              },
-                            ),
+                            // ── Acumulados (desktop: antes de resultados) ────
+                            if (!isMobAuth) ...[
+                              const SizedBox(height: 16),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal:
+                                          constraints.maxWidth < 720 ? 0 : 20,
+                                    ),
+                                    child: const AcumuladosSectionWidget(),
+                                  );
+                                },
+                              ),
+                            ],
 
                             // ── Resultados loterías y sorteos ────────────────
                             const SizedBox(height: 16),
                             LayoutBuilder(
                               builder: (context, constraints) {
-                                final bool isMobile =
-                                    constraints.maxWidth < 720;
+                                final bool mob = constraints.maxWidth < 720;
                                 return Padding(
                                   padding: EdgeInsets.symmetric(
-                                    horizontal: isMobile ? 16 : 20,
+                                    horizontal: mob ? 16 : 20,
                                   ),
                                   child: SectionHeaderWidget(
                                     icon: SvgPicture.asset(
                                       AppAssets.iconResultados,
-                                      width: 28,
-                                      height: 28,
+                                      width: mob ? 24 : 28,
+                                      height: mob ? 24 : 28,
                                     ),
                                     title: 'Resultados loterías y sorteos',
                                     showVerMas: true,
@@ -226,8 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Móvil: sin padding → scroll táctil desde el borde
-                            // Desktop: left:20 alineado al resto de secciones
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 return Padding(
@@ -239,32 +180,38 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             ),
 
+                            // ── Acumulados (mobile auth: después de resultados)
+                            if (isMobAuth) ...[
+                              const SizedBox(height: 16),
+                              const AcumuladosSectionWidget(),
+                            ],
+
                             // ── Juegos ───────────────────────────────────────
                             const SizedBox(height: 16),
-                            // Móvil: sin padding → el widget maneja su propio px-16
-                            // Desktop: px-20
                             LayoutBuilder(
                               builder: (context, constraints) {
-                                final bool isMobile =
-                                    constraints.maxWidth < 720;
                                 return Padding(
                                   padding: EdgeInsets.symmetric(
-                                    horizontal: isMobile ? 0 : 20,
+                                    horizontal:
+                                        constraints.maxWidth < 720 ? 0 : 20,
                                   ),
                                   child: const JuegosSectionWidget(),
                                 );
                               },
                             ),
+
+                            // Padding inferior para que el bottom nav no tape contenido
+                            if (isMobAuth) const SizedBox(height: 96),
                           ],
                         ),
                       ),
                     ),
 
-                    // ── Gap entre tarjetas y footer ──────────────────────────
-                    const SizedBox(height: 16),
-
-                    // ── Footer — full-width ──────────────────────────────────
-                    const FooterWidget(),
+                    // ── Gap + Footer — oculto en mobile autenticado ──────────
+                    if (!isMobAuth) ...[
+                      const SizedBox(height: 16),
+                      const FooterWidget(),
+                    ],
                   ],
                 ),
               ),
@@ -272,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // ── Toast de bienvenida post-registro ────────────────────────
               if (_showWelcomeToast)
                 Positioned(
-                  bottom: 32,
+                  bottom: isMobAuth ? 100 : 32,
                   left: 0,
                   right: 0,
                   child: Center(
@@ -284,7 +231,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
               // ── Navbar fija/sticky — overlay sobre el scroll ──────────────
-              // Cambia de variante según isLoggedIn, sin reconstruir el resto.
               Positioned(
                 top: 0,
                 left: 0,
@@ -294,25 +240,52 @@ class _HomeScreenState extends State<HomeScreen> {
                   activeNavItem: 'Inicio',
                   onJuegosTap: () => context.go(AppRoutes.juegos),
                   onResultadosTap: () => context.go(AppRoutes.resultados),
-                  // Sin logueo: callbacks de apertura de modales
                   onLoginTap: isLoggedIn
                       ? null
-                      : () => _showLoginModal(context),
+                      : () => showLoginRequired(context),
                   onRegisterTap: isLoggedIn
                       ? null
-                      : () => _showRegisterModal(context),
-                  // Logueado: callbacks de acciones del usuario (por implementar)
+                      : () => showLoginRequired(context),
                   onWalletTap: isLoggedIn ? () {} : null,
                   onCartTap:   isLoggedIn ? () {} : null,
                   onAvatarTap: isLoggedIn ? () {} : null,
+                  onSaldoTap:  isLoggedIn ? () {} : null,
                 ),
               ),
+
+              // ── Bottom navigation mobile autenticado ──────────────────────
+              // Solo visible en mobile (<720px) con sesión iniciada.
+              // No interfiere con desktop/web.
+              if (isMobAuth)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _MobileBottomNav(
+                    activeItem: 'Inicio',
+                    onInicioTap: () {},
+                    onResultadosTap: () => context.go(AppRoutes.resultados),
+                    onJuegosTap: () => context.go(AppRoutes.juegos),
+                    onPerfilTap: () {},
+                  ),
+                ),
             ],
           ),
         );
       },
     );
   }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/// Extrae el primer nombre del fullName del usuario.
+/// Fallback: 'amigo' si el usuario no tiene nombre.
+String _extractFirstName(UserEntity? user) {
+  if (user == null) return 'amigo';
+  final trimmed = user.fullName.trim();
+  if (trimmed.isEmpty) return 'amigo';
+  return trimmed.split(' ').first;
 }
 
 // ── Toast de bienvenida post-registro ─────────────────────────────────────────
@@ -396,6 +369,162 @@ class _WelcomeToastState extends State<_WelcomeToast>
                 Icons.close_rounded,
                 color: AppColors.success,
                 size: 18,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Saludo mobile autenticado ─────────────────────────────────────────────────
+// Figma mobile authenticated: "Hola {nombre} ¡Buena suerte hoy!"
+// Inter Bold 22px · blanco · left-aligned · px-20
+
+class _MobileGreeting extends StatelessWidget {
+  const _MobileGreeting({required this.firstName});
+
+  final String firstName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Text(
+        'Hola $firstName ¡Buena suerte hoy!',
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: AppColors.neutralWhite,
+          height: 1.3,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bottom navigation mobile autenticado ──────────────────────────────────────
+// Figma: flotante · bordes redondeados · fijo abajo · 4 ítems
+// Activo "Inicio": fondo amarillo navActiveYellow (#feca0c) · texto/ícono oscuro
+// Inactivo: texto/ícono blanco
+
+class _MobileBottomNav extends StatelessWidget {
+  const _MobileBottomNav({
+    required this.activeItem,
+    this.onInicioTap,
+    this.onResultadosTap,
+    this.onJuegosTap,
+    this.onPerfilTap,
+  });
+
+  final String activeItem;
+  final VoidCallback? onInicioTap;
+  final VoidCallback? onResultadosTap;
+  final VoidCallback? onJuegosTap;
+  final VoidCallback? onPerfilTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, safeBottom + 12),
+      child: Container(
+        height: 70,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A2750),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _BottomNavItem(
+              icon: Icons.home_rounded,
+              label: 'Inicio',
+              isActive: activeItem == 'Inicio',
+              onTap: onInicioTap,
+            ),
+            _BottomNavItem(
+              icon: Icons.emoji_events_rounded,
+              label: 'Resultados',
+              isActive: activeItem == 'Resultados',
+              onTap: onResultadosTap,
+            ),
+            _BottomNavItem(
+              icon: Icons.sports_esports_rounded,
+              label: 'Juegos',
+              isActive: activeItem == 'Juegos',
+              onTap: onJuegosTap,
+            ),
+            _BottomNavItem(
+              icon: Icons.person_outline_rounded,
+              label: 'Perfil',
+              isActive: activeItem == 'Perfil',
+              onTap: onPerfilTap,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomNavItem extends StatelessWidget {
+  const _BottomNavItem({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const Color activeColor   = Color(0xFF111827); // texto/ícono sobre amarillo
+    final Color inactiveColor = Colors.white.withValues(alpha: 0.75);
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: isActive
+            ? BoxDecoration(
+                color: AppColors.navActiveYellow,
+                borderRadius: BorderRadius.circular(14),
+              )
+            : null,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: isActive ? activeColor : inactiveColor,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: isActive ? activeColor : inactiveColor,
+                height: 1.0,
               ),
             ),
           ],

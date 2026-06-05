@@ -1,4 +1,7 @@
 abstract final class AppAssets {
+  // ── Iconos generales ──────────────────────────────────────────────────────
+  static const String starResultados = 'assets/images/star_resultados.svg';
+
   // ── Logo Gane (SVG) ───────────────────────────────────────────────────────
   static const String logoGane = 'assets/images/logo_gane.svg';
 
@@ -99,6 +102,11 @@ abstract final class AppAssets {
   // ── Dominguero ────────────────────────────────────────────────────────────
   static const String bannerDominguero  = 'assets/images/banner_dominguero.png';
   static const String refreshCircular   = 'assets/images/refresh-circular.svg';
+
+  // ── Resultados banner ─────────────────────────────────────────────────────
+  static const String frameResultados = 'assets/images/frame_resultados.png';
+  static const String iconCopa        = 'assets/images/Icon_copa.svg';
+  static const String iconCalendario  = 'assets/images/calendar.svg';
 
   // ── Baloto / Revancha ─────────────────────────────────────────────────────
   static const String bannerBalotoRevancha = 'assets/images/Banner-Baloto-Rebancha.png';

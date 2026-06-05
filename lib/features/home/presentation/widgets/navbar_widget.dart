@@ -39,6 +39,7 @@ class NavbarWidget extends StatelessWidget {
     this.onCartTap,
     this.onAvatarTap,
     this.userAvatarUrl,
+    this.onSaldoTap,
   });
 
   final VoidCallback? onLoginTap;
@@ -60,6 +61,7 @@ class NavbarWidget extends StatelessWidget {
   final VoidCallback? onWalletTap;
   final VoidCallback? onCartTap;
   final VoidCallback? onAvatarTap;
+  final VoidCallback? onSaldoTap;
 
   /// URL o ruta local de la foto de perfil del usuario. Si es null usa placeholder.
   final String? userAvatarUrl;
@@ -71,11 +73,15 @@ class NavbarWidget extends StatelessWidget {
         if (constraints.maxWidth < 720) {
           return _NavbarMobile(
             isLoggedIn: isLoggedIn,
+            saldo: saldo,
             onLoginTap: onLoginTap,
             onRegisterTap: onRegisterTap,
             onInicioTap: onInicioTap,
             onJuegosTap: onJuegosTap,
             onResultadosTap: onResultadosTap,
+            onSaldoTap: onSaldoTap,
+            onWalletTap: onWalletTap,
+            onCartTap: onCartTap,
           );
         }
         return _NavbarDesktop(
@@ -217,19 +223,27 @@ class _NavbarDesktop extends StatelessWidget {
 class _NavbarMobile extends StatefulWidget {
   const _NavbarMobile({
     required this.isLoggedIn,
+    this.saldo = r'$ 0',
     this.onLoginTap,
     this.onRegisterTap,
     this.onInicioTap,
     this.onJuegosTap,
     this.onResultadosTap,
+    this.onSaldoTap,
+    this.onWalletTap,
+    this.onCartTap,
   });
 
   final bool isLoggedIn;
+  final String saldo;
   final VoidCallback? onLoginTap;
   final VoidCallback? onRegisterTap;
   final VoidCallback? onInicioTap;
   final VoidCallback? onJuegosTap;
   final VoidCallback? onResultadosTap;
+  final VoidCallback? onSaldoTap;
+  final VoidCallback? onWalletTap;
+  final VoidCallback? onCartTap;
 
   @override
   State<_NavbarMobile> createState() => _NavbarMobileState();
@@ -315,7 +329,13 @@ class _NavbarMobileState extends State<_NavbarMobile> {
               ),
               const Spacer(),
               if (widget.isLoggedIn)
-                _AvatarCircle(size: 32, avatarUrl: null, onTap: _openMenu)
+                // Controles compactos: saldo · wallet · carrito
+                _MobileTopControls(
+                  saldo: widget.saldo,
+                  onSaldoTap: widget.onSaldoTap,
+                  onWalletTap: widget.onWalletTap,
+                  onCartTap: widget.onCartTap,
+                )
               else
                 // Hamburger 33×31px (Figma node 561:12038)
                 GestureDetector(
@@ -334,6 +354,115 @@ class _NavbarMobileState extends State<_NavbarMobile> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Controles compactos mobile logueado ──────────────────────────────────────
+// Figma (mobile authenticated): saldo + wallet + carrito en la barra de 44px.
+// Tamaños reducidos para caber en h-44 con padding 16px vertical.
+
+class _MobileTopControls extends StatelessWidget {
+  const _MobileTopControls({
+    required this.saldo,
+    this.onSaldoTap,
+    this.onWalletTap,
+    this.onCartTap,
+  });
+
+  final String saldo;
+  final VoidCallback? onSaldoTap;
+  final VoidCallback? onWalletTap;
+  final VoidCallback? onCartTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Saldo ─────────────────────────────────────────────────────────
+        GestureDetector(
+          onTap: onSaldoTap,
+          child: Container(
+            height: 30,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(
+                  AppAssets.iconDollar,
+                  width: 13,
+                  height: 13,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  saldo,
+                  style: GoogleFonts.nunito(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF111827),
+                    height: 1.0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        // ── Wallet ─────────────────────────────────────────────────────────
+        GestureDetector(
+          onTap: onWalletTap,
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: const Color(0xFFC7B322),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x66FFCC00),
+                  offset: Offset(0, 2),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: SvgPicture.asset(
+              AppAssets.iconWallet,
+              width: 16,
+              height: 16,
+              colorFilter: const ColorFilter.mode(
+                Colors.white,
+                BlendMode.srcIn,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        // ── Carrito ────────────────────────────────────────────────────────
+        GestureDetector(
+          onTap: onCartTap,
+          child: Container(
+            width: 36,
+            height: 30,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: SvgPicture.asset(
+              AppAssets.iconCart,
+              width: 16,
+              height: 16,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
