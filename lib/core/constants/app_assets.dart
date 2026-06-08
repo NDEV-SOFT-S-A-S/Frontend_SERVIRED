@@ -89,8 +89,13 @@ abstract final class AppAssets {
   static const String logoColjuegos = 'assets/images/coljuegos_logo_white.png';
 
   // ── Superwin ──────────────────────────────────────────────────────────────
-  static const String bannerSuperwin = 'assets/images/banner_juegos_superwin.png';
-  static const String imagenSuperwin = 'assets/images/imagen_1_superwin.png';
+  // Banner Figma node "Banners Juegos-01 1" (148px alto)
+  static const String frameSuperwin       = 'assets/images/frame_superwin.png';
+  // Tarjeta sorteo Chontico Día (150×81 Figma node "image 1")
+  static const String imagenSuperwin      = 'assets/images/chontico_fsuperwin.png';
+  // Tarjeta sorteo Chontico Noche — asset listo; lógica Día/Noche pendiente de
+  // confirmación con PO/cliente. TODO(backend/PO): activar cuando se defina horario.
+  static const String imagenSuperwinNoche = 'assets/images/superwin_noche.png';
 
   // ── Chance Millonario (HU-CM001) ─────────────────────────────────────────
   // Mismo archivo que juegoImg9 — "Chance Millonario Sorprendente"
