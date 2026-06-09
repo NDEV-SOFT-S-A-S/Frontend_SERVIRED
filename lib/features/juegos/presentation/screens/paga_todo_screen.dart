@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_assets.dart';
@@ -23,17 +24,20 @@ enum _Modalidad { tresC, cuatroC }
 extension _ModalidadX on _Modalidad {
   int get digits => this == _Modalidad.tresC ? 3 : 4;
   String get cifraTag => this == _Modalidad.tresC ? '3C' : '4C';
+  String get label => this == _Modalidad.tresC ? '3 Cifras' : '4 Cifras';
 }
 
 // Valores fijos habilitados según levantamiento funcional (HU-PAG001 §Reglas)
-// Valores de resolución: $1.600, $2.000, $2.500, $3.000, $4.000 y $5.000
-// Levantamiento actual: $2.500, $3.000, $4.000 y $5.000
+// Resolución G-000324 autoriza: $1.600, $2.000, $2.500, $3.000, $4.000, $5.000
+// Levantamiento actual operativo: $2.500, $3.000, $4.000, $5.000
 const _kValoresHabilitados = <int>[2500, 3000, 4000, 5000];
 
-// ── Datos de loterías — mismas que Chance Tradicional (Figma: 14 loterías) ───
-// Fila 1: Risaralda, Meta, Quindío, Cauca, Medellín, Extra Medellín, Manizales
-// Fila 2: Cundinamarca, Boyacá, Bogotá, Valle, Tolima, Huila, Santander
+// Premio máximo preview cuando no hay selección (Figma: $7.250.000 COP con 4C/$5.000)
+// Multiplicador: $5.000 × 1.450 = $7.250.000 — tabla oficial se recibe del backend
+const _kMultiplier4C = 1450;
+const _kMultiplier3C = 310;
 
+// Logos de loterías — Figma "Loterias Juego" nodo pagatodo (87×87 c/u)
 const _kLoteriaData = <({String name, String asset})>[
   (name: 'Lotería del\nRisaralda',     asset: AppAssets.logoRisaralda),
   (name: 'Lotería del\nMeta',          asset: AppAssets.logoLoteriaMeta),
@@ -102,7 +106,11 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
     final n = _numeroCtrl.text.trim();
     if (n.isEmpty || n.length != _modalidad.digits) {
       setState(() =>
-          _fieldError = 'El número debe tener exactamente ${_modalidad.digits} cifras');
+          _fieldError = 'Ingrese un número válido para la modalidad seleccionada');
+      return false;
+    }
+    // Número bloqueado — el error se muestra visualmente en _buildNumberInput
+    if (_isNumeroError) {
       return false;
     }
     if (_selectedValor == null) {
@@ -110,7 +118,8 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
       return false;
     }
     if (_selectedLoterias.isEmpty) {
-      setState(() => _fieldError = 'Selecciona al menos una lotería');
+      setState(() =>
+          _fieldError = 'Seleccione una lotería o sorteo para continuar');
       return false;
     }
     setState(() => _fieldError = null);
@@ -135,14 +144,33 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
 
   void _removeLine(int i) => setState(() => _lines.removeAt(i));
 
+  void _limpiar() {
+    setState(() {
+      _lines.clear();
+      _numeroCtrl.clear();
+      _selectedLoterias.clear();
+      _selectedValor = null;
+      _fieldError = null;
+      _confirmed = false;
+    });
+  }
+
   int get _totalValor => _lines.fold(0, (s, l) => s + l.valor);
   int get _totalIva => _lines.fold(0, (s, l) => s + l.iva);
 
-  // Premio máximo potencial — parametrizable (reemplazar por tabla backend)
-  // Aproximación para display: 4C × 3000x, 3C × 650x valor neto
+  // Números bloqueados (quemados) por modalidad — mostrar estado de error visual
+  bool get _isNumeroError {
+    final n = _numeroCtrl.text;
+    if (n.isEmpty) return false;
+    if (_modalidad == _Modalidad.cuatroC) return n == '7896';
+    return n == '789';
+  }
+
+  // Premio por cifra y valor — tabla oficial viene del backend (parametrizable)
   int _maxPrize(int valor, _Modalidad m) {
-    final neto = valor - (valor * 19 / 119).round();
-    return m == _Modalidad.cuatroC ? (neto * 3000) : (neto * 650);
+    return m == _Modalidad.cuatroC
+        ? (valor * _kMultiplier4C)
+        : (valor * _kMultiplier3C);
   }
 
   int get _maxPrizeDisplay {
@@ -152,10 +180,11 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
         .reduce((a, b) => a > b ? a : b);
   }
 
-  // Si hay valor seleccionado pero aún no se agregaron líneas, mostrar preview
-  int get _previewPrize {
-    if (_selectedValor == null) return 0;
-    return _maxPrize(_selectedValor!, _modalidad);
+  // Preview: si hay líneas usar su máximo; si no, mostrar el máximo posible
+  // para la modalidad activa (Figma muestra $7.250.000 = 4C × $5.000 × 1450)
+  int get _prizeForDisplay {
+    if (_lines.isNotEmpty) return _maxPrizeDisplay;
+    return _maxPrize(_kValoresHabilitados.last, _modalidad);
   }
 
   static String _fmt(int amount) {
@@ -182,6 +211,64 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
   static double _navH(double w, bool loggedIn) {
     if (w < 720) return 64.0;
     return loggedIn ? 120.0 : 104.0;
+  }
+
+  // ── Diálogo de confirmación (HU paso 20 / flujo A5) ───────────────────────
+
+  void _showConfirmDialog() {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          '¿Está seguro de que desea realizar la compra?',
+          style: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2C2E6F),
+          ),
+        ),
+        content: Text(
+          'Total: ${_fmt(_totalValor)}\n${_lines.length} apuesta${_lines.length == 1 ? '' : 's'} Paga Todo',
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            color: const Color(0xFF4B5563),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF4B5563),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF43B75D),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Aceptar',
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed == true) setState(() => _confirmed = true);
+    });
   }
 
   @override
@@ -287,7 +374,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.asset(
-                  AppAssets.juegoImg3,
+                  AppAssets.juegoPagaTodo,
                   height: 100,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const Icon(
@@ -395,6 +482,11 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
   // ── Left card ──────────────────────────────────────────────────────────────
 
   Widget _buildLeftCard(bool isDesktop) {
+    final hasData = _lines.isNotEmpty ||
+        _numeroCtrl.text.isNotEmpty ||
+        _selectedValor != null ||
+        _selectedLoterias.isNotEmpty;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -429,6 +521,25 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
           const SizedBox(height: 16),
 
           _buildStep3(),
+          const SizedBox(height: 20),
+
+          // Botón Limpiar (HU flujo alterno A1)
+          if (hasData)
+            Center(
+              child: TextButton.icon(
+                onPressed: _limpiar,
+                icon: const Icon(Icons.delete_outline_rounded,
+                    size: 18, color: Color(0xFF4B5563)),
+                label: Text(
+                  'Limpiar',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF4B5563),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -441,7 +552,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
         width: double.infinity,
         height: 150,
         child: Image.asset(
-          AppAssets.juegoImg3,
+          AppAssets.bannerPagaTodo,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             height: 150,
@@ -484,17 +595,10 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Automático chip
-        Padding(
-          padding: const EdgeInsets.only(left: 10),
-          child: _AutomaticoBtn(onTap: _autoNumero),
-        ),
-        const SizedBox(height: 12),
-
-        // Layout: botones de cifras + input
+        // Layout: botones de cifras (izq) + input + automático + balotas (der)
         isDesktop
             ? Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _ModalidadButtons(
                     selected: _modalidad,
@@ -528,38 +632,47 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
   }
 
   Widget _buildNumberInput() {
+    final bool isError = _isNumeroError;
+    final bool hasText = _numeroCtrl.text.isNotEmpty;
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 10),
-          child: Text(
-            'Ingresa tu número',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF4B5563),
-              height: 24 / 14,
+        // Label centrado (Figma: Poppins SemiBold 14px, #4B5563)
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'ingresa tu número',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF4B5563),
+                height: 24 / 12,
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 8),
 
+        // Campo de entrada — borde rojo si número bloqueado
         Container(
-          height: 45,
+          height: 56,
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(
-              color: _fieldError != null
-                  ? AppColors.error
-                  : const Color(0xFFD1D5DB),
+              color: isError
+                  ? const Color(0xFFDA1414)
+                  : (_fieldError != null
+                      ? AppColors.error
+                      : const Color(0xFFD1D5DB)),
+              width: 1.5,
             ),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(30),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x40000000),
-                offset: Offset(1, 2),
-                blurRadius: 4,
+                color: Color(0x26000000),
+                offset: Offset(0, 2),
+                blurRadius: 8,
               ),
             ],
           ),
@@ -572,7 +685,10 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
             style: GoogleFonts.inter(
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF4B5563),
+              // Texto rojo cuando el número está bloqueado
+              color: isError
+                  ? const Color(0xFFDA1414)
+                  : const Color(0xFF4B5563),
             ),
             decoration: InputDecoration(
               counterText: '',
@@ -581,7 +697,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
               hintStyle: GoogleFonts.inter(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF4B5563),
+                color: const Color(0xFF9CA3AF),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             ),
@@ -589,7 +705,40 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
           ),
         ),
 
-        if (_fieldError != null) ...[
+        // Mensaje de número bloqueado (Figma nodo 905:28673 — estado error)
+        if (isError) ...[
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Te invitamos a elegir otro número',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFFDA1414),
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () {/* TODO: mostrar panel de sugerencias */},
+                child: Text(
+                  'Sugerencias',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1372AE),
+                    decoration: TextDecoration.underline,
+                    decorationColor: const Color(0xFF1372AE),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+
+        // Error de validación HU (solo cuando no es número bloqueado)
+        if (!isError && _fieldError != null) ...[
           const SizedBox(height: 4),
           Text(
             _fieldError!,
@@ -599,9 +748,13 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
             ),
           ),
         ],
+
+        // Botón Automático — entre el input y las balotas (Figma)
+        const SizedBox(height: 8),
+        Center(child: _AutomaticoBtn(onTap: _autoNumero)),
         const SizedBox(height: 8),
 
-        // Balotas display bar
+        // Balotas display bar — normal o estado de error
         Container(
           width: double.infinity,
           height: 44,
@@ -619,35 +772,63 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Row(
             children: [
+              // Tag de modalidad — rojo en error, gris en normal
               Text(
                 _modalidad.cifraTag,
                 style: GoogleFonts.inter(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF4B5563),
-                  height: 38 / 20,
+                  color: isError
+                      ? const Color(0xFFDA1414)
+                      : const Color(0xFF4B5563),
+                  height: 38 / 16,
                 ),
               ),
               const SizedBox(width: 8),
               ...List.generate(_modalidad.digits, (i) {
-                final digit = _numeroCtrl.text.length > i
-                    ? _numeroCtrl.text[i]
-                    : '?';
+                if (isError) {
+                  // Estado bloqueado: balotas salmon con asterisco (Figma)
+                  return Container(
+                    width: 32,
+                    height: 28,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFCA5A5),
+                      borderRadius: BorderRadius.circular(80),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '*',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFDA1414),
+                      ),
+                    ),
+                  );
+                }
+                // Estado normal: ? cuando vacío, dígito real cuando hay texto
+                final digit =
+                    hasText && i < _numeroCtrl.text.length
+                        ? _numeroCtrl.text[i]
+                        : '?';
                 return Container(
                   width: 32,
-                  height: 29,
-                  margin: const EdgeInsets.only(right: 4),
+                  height: 28,
+                  margin: const EdgeInsets.only(right: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD1D5DB),
+                    color: const Color(0xFFE5E7EB),
                     borderRadius: BorderRadius.circular(80),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     digit,
                     style: GoogleFonts.inter(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF4B5563),
+                      color: hasText
+                          ? const Color(0xFF4B5563)
+                          : const Color(0xFF9CA3AF),
                     ),
                   ),
                 );
@@ -832,10 +1013,6 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
   // ── Right card ─────────────────────────────────────────────────────────────
 
   Widget _buildRightCard(bool isDesktop) {
-    final showPrize = _lines.isNotEmpty
-        ? _maxPrizeDisplay
-        : _previewPrize;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -857,7 +1034,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Agregar apuesta button
+          // Botón "Agregar otra línea de apuesta"
           GestureDetector(
             onTap: _addLine,
             child: Container(
@@ -941,7 +1118,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                _buildPrizeButton(showPrize),
+                _buildPrizeButton(_prizeForDisplay),
               ],
             ),
           ),
@@ -979,10 +1156,25 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
                 color: Colors.black,
               ),
               children: [
-                TextSpan(
-                    text: '${_modalidad.cifraTag} '),
+                TextSpan(text: '${_modalidad.cifraTag} '),
                 const TextSpan(
                   text: '????',
+                  style: TextStyle(color: Color(0xFFFFCC00)),
+                ),
+              ],
+            ),
+          ),
+          RichText(
+            text: TextSpan(
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+              children: [
+                const TextSpan(text: 'Lotería '),
+                const TextSpan(
+                  text: '****',
                   style: TextStyle(color: Color(0xFFFFCC00)),
                 ),
               ],
@@ -1122,7 +1314,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
           ),
           elevation: 0,
         ),
-        onPressed: hasLines ? () => setState(() => _confirmed = true) : null,
+        onPressed: hasLines ? _showConfirmDialog : null,
         child: Text(
           'Confirmar y pagar',
           style: GoogleFonts.inter(
@@ -1160,13 +1352,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () => setState(() {
-              _confirmed = false;
-              _lines.clear();
-              _selectedLoterias.clear();
-              _selectedValor = null;
-              _numeroCtrl.clear();
-            }),
+            onPressed: _limpiar,
             child: Text(
               'Realizar otra apuesta',
               style: GoogleFonts.inter(
@@ -1191,7 +1377,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
       ),
       alignment: Alignment.center,
       child: Text(
-        prize == 0 ? '\$ 0 COP' : '${_fmt(prize)} COP',
+        '${_fmt(prize)} COP',
         style: GoogleFonts.inter(
           fontSize: 36,
           fontWeight: FontWeight.w700,
@@ -1226,13 +1412,13 @@ class _ModalidadButtons extends StatelessWidget {
     return Column(
       children: [
         _ModalidadBtn(
-          label: '3 Cifras',
+          label: _Modalidad.tresC.label,
           isSelected: selected == _Modalidad.tresC,
           onTap: () => onSelect(_Modalidad.tresC),
         ),
         const SizedBox(height: 10),
         _ModalidadBtn(
-          label: '4 Cifras',
+          label: _Modalidad.cuatroC.label,
           isSelected: selected == _Modalidad.cuatroC,
           onTap: () => onSelect(_Modalidad.cuatroC),
         ),
@@ -1269,10 +1455,10 @@ class _ModalidadBtn extends StatelessWidget {
         child: Text(
           label,
           style: GoogleFonts.inter(
-            fontSize: 20,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
             color: Colors.white,
-            height: 24 / 20,
+            height: 24 / 14,
           ),
         ),
       ),
@@ -1290,21 +1476,29 @@ class _AutomaticoBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 22,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         decoration: BoxDecoration(
           color: const Color(0xFFFECA0C),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF1372AE)),
+            SvgPicture.asset(
+              AppAssets.refreshCircular,
+              width: 18,
+              height: 18,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF1372AE),
+                BlendMode.srcIn,
+              ),
+            ),
             const SizedBox(width: 6),
             Text(
               'Automático',
               style: GoogleFonts.inter(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF1372AE),
               ),
