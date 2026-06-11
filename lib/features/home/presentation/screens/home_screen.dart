@@ -5,13 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/services/login_redirect_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
-import '../../../auth/presentation/screens/login_screen.dart';
-import '../../../auth/presentation/screens/otp_verification_screen.dart';
-import '../../../auth/presentation/screens/register_step1_screen.dart';
+import '../../../../shared/utils/auth_modal.dart';
 import '../widgets/acumulados_section_widget.dart';
 import '../widgets/banner_carousel_widget.dart';
 import '../widgets/footer_widget.dart';
@@ -19,67 +17,6 @@ import '../widgets/juegos_section_widget.dart';
 import '../widgets/navbar_widget.dart';
 import '../widgets/resultados_carousel_widget.dart';
 import '../widgets/section_header_widget.dart';
-
-void _showLoginModal(BuildContext context) {
-  // Mobile: navegar a LoginScreen (pantalla completa azul como Figma)
-  if (MediaQuery.sizeOf(context).width < 600) {
-    LoginRedirectService.save(AppRoutes.home);
-    context.push(AppRoutes.login);
-    return;
-  }
-
-  // Desktop/web: modal card igual que antes
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.6),
-    builder: (dialogContext) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      child: SingleChildScrollView(
-        child: LoginFormWidget(
-          onClose: () => Navigator.pop(dialogContext),
-          onLoginSuccess: () => Navigator.pop(dialogContext),
-          onRegisterRequested: () {
-            Navigator.pop(dialogContext);
-            _showRegisterModal(context);
-          },
-          onRecoveryRequested: (identifier) {
-            Navigator.pop(dialogContext);
-            dialogContext.push(
-              AppRoutes.otpVerification,
-              extra: {
-                'destination': identifier,
-                'flow': OtpFlow.passwordRecovery,
-              },
-            );
-          },
-        ),
-      ),
-    ),
-  );
-}
-
-void _showRegisterModal(BuildContext context) {
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.6),
-    builder: (dialogContext) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      child: SingleChildScrollView(
-        child: RegisterFlowWidget(
-          onClose: () => Navigator.pop(dialogContext),
-          onLoginRequested: () {
-            Navigator.pop(dialogContext);
-            _showLoginModal(context);
-          },
-        ),
-      ),
-    ),
-  );
-}
 
 // Figma node 561:8092 — Landing page (sin logueo)
 // Figma node 561:10658 — Landing sesión ya iniciada (logueado)
