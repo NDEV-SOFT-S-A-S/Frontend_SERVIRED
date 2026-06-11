@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/login_redirect_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -233,6 +234,7 @@ class _ChanceTradicionalScreenState extends State<ChanceTradicionalScreen> {
 
   void _showLoginModal(BuildContext ctx) {
     if (MediaQuery.sizeOf(ctx).width < 600) {
+      LoginRedirectService.save(AppRoutes.chanceTradicional);
       ctx.push(AppRoutes.login);
       return;
     }

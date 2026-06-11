@@ -13,6 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/login_redirect_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../carrito/presentation/screens/carrito_screen.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
@@ -438,6 +439,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
 
   void _showLoginModal(BuildContext ctx) {
     if (MediaQuery.sizeOf(ctx).width < 600) {
+      LoginRedirectService.save(AppRoutes.balotoRevancha);
       ctx.push(AppRoutes.login);
       return;
     }

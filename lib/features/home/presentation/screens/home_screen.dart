@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/login_redirect_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -22,6 +23,7 @@ import '../widgets/section_header_widget.dart';
 void _showLoginModal(BuildContext context) {
   // Mobile: navegar a LoginScreen (pantalla completa azul como Figma)
   if (MediaQuery.sizeOf(context).width < 600) {
+    LoginRedirectService.save(AppRoutes.home);
     context.push(AppRoutes.login);
     return;
   }
