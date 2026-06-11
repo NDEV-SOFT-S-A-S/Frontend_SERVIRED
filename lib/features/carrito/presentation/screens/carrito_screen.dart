@@ -18,13 +18,19 @@ class CarritoItem {
     required this.conRevancha,
     required this.cantidadSorteos,
     required this.precioTotal,
+    this.gameTipo = 'baloto', // 'baloto' | 'miloto' | ...
   });
 
   final List<int> balotas;
-  final int superbalota;
-  final bool conRevancha;
-  final int cantidadSorteos;
-  final int precioTotal;
+  final int       superbalota;
+  final bool      conRevancha;
+  final int       cantidadSorteos;
+  final int       precioTotal;
+  /// Identificador del juego — permite al carrito adaptar la presentación.
+  final String    gameTipo;
+
+  bool get esMiLoto  => gameTipo == 'miloto';
+  bool get esBaloto  => gameTipo == 'baloto';
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -60,8 +66,16 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 
   void _eliminar(int index) {
+    final gameTipo = _items[index].gameTipo;
     setState(() => _items.removeAt(index));
-    if (_items.isEmpty) context.go(AppRoutes.balotoRevancha);
+    if (_items.isEmpty) {
+      context.go(gameTipo == 'miloto' ? AppRoutes.miLoto : AppRoutes.balotoRevancha);
+    }
+  }
+
+  String get _seguirRuta {
+    if (_items.isNotEmpty && _items.every((i) => i.esMiLoto)) return AppRoutes.miLoto;
+    return AppRoutes.balotoRevancha;
   }
 
   int get _totalGeneral => _items.fold(0, (s, i) => s + i.precioTotal);
@@ -144,10 +158,27 @@ class _CarritoScreenState extends State<CarritoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Fila 1 — Revancha chip + eliminar
+          // Fila 1 — chip de producto/revancha + eliminar
           Row(
             children: [
-              if (item.conRevancha) ...[
+              if (item.esMiLoto)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F0FB),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF4A9FDC)),
+                  ),
+                  child: Text(
+                    'Mi Loto',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0C2577),
+                    ),
+                  ),
+                )
+              else if (item.conRevancha) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -230,8 +261,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
               spacing: 4,
               runSpacing: 4,
               children: [
-                ...item.balotas.map((n) => _buildBola(n, isSuper: false, size: 28)),
-                _buildBola(item.superbalota, isSuper: true, size: 28),
+                ...item.balotas.map((n) => _buildBola(n, isSuper: false, size: 28, isMiLoto: item.esMiLoto)),
+                if (!item.esMiLoto)
+                  _buildBola(item.superbalota, isSuper: true, size: 28),
               ],
             ),
           ),
@@ -308,7 +340,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: () => context.go(AppRoutes.balotoRevancha),
+                onTap: () => context.go(_seguirRuta),
                 child: Container(
                   height: 48,
                   decoration: BoxDecoration(
@@ -403,6 +435,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 
   Widget _buildDesktopFila(int index, CarritoItem item) {
+    final bool esMiLoto = item.esMiLoto;
+    final String logoAsset = esMiLoto ? AppAssets.logoMiLoto : AppAssets.logoBalotoRevancha;
+    final String logoFallback = esMiLoto ? 'ML' : 'BR';
+
     return Container(
       height: 80,
       margin: const EdgeInsets.only(top: 8),
@@ -417,55 +453,63 @@ class _CarritoScreenState extends State<CarritoScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
-                  AppAssets.logoBalotoRevancha,
+                  logoAsset,
                   height: 60,
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => Container(
                     width: 80, height: 60,
                     color: const Color(0xFF071647),
                     alignment: Alignment.center,
-                    child: Text('BR',
+                    child: Text(logoFallback,
                         style: GoogleFonts.inter(color: Colors.white, fontSize: 12)),
                   ),
                 ),
               ),
             ),
           ),
-          // Juega con
+          // Juega con (Revancha para Baloto · "Mi Loto" para Mi Loto)
           Expanded(
             flex: 2,
             child: Center(
-              child: item.conRevancha
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 22, height: 22,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFF0C2577), width: 2),
-                          ),
-                          child: Center(
-                            child: Container(
-                              width: 10, height: 10,
-                              decoration: const BoxDecoration(
+              child: esMiLoto
+                  ? Text(
+                      'Mi Loto',
+                      style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF4A9FDC)),
+                    )
+                  : (item.conRevancha
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 22, height: 22,
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Color(0xFF0C2577),
+                                border: Border.all(color: const Color(0xFF0C2577), width: 2),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 10, height: 10,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFF0C2577),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('Revancha',
-                            style: GoogleFonts.inter(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF071647))),
-                      ],
-                    )
-                  : Text('Sin revancha',
-                      style: GoogleFonts.inter(
-                          fontSize: 15, color: const Color(0xFF6B7280))),
+                            const SizedBox(width: 8),
+                            Text('Revancha',
+                                style: GoogleFonts.inter(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w400,
+                                    color: const Color(0xFF071647))),
+                          ],
+                        )
+                      : Text('Sin revancha',
+                          style: GoogleFonts.inter(
+                              fontSize: 15, color: const Color(0xFF6B7280)))),
             ),
           ),
           // Sorteos
@@ -489,8 +533,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
               spacing: 4,
               runSpacing: 4,
               children: [
-                ...item.balotas.map((n) => _buildBola(n, isSuper: false, size: 32)),
-                _buildBola(item.superbalota, isSuper: true, size: 32),
+                ...item.balotas.map((n) => _buildBola(n, isSuper: false, size: 32, isMiLoto: esMiLoto)),
+                if (!esMiLoto)
+                  _buildBola(item.superbalota, isSuper: true, size: 32),
               ],
             ),
           ),
@@ -557,7 +602,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => context.go(AppRoutes.balotoRevancha),
+                    onTap: () => context.go(_seguirRuta),
                     child: Container(
                       height: 47,
                       decoration: BoxDecoration(
@@ -610,17 +655,20 @@ class _CarritoScreenState extends State<CarritoScreen> {
   // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildBanner() {
+    final isMiLoto = _items.isNotEmpty && _items.every((i) => i.esMiLoto);
+    final bannerAsset = isMiLoto ? AppAssets.bannerMiLoto : AppAssets.bannerBalotoRevancha;
+    final fallbackLabel = isMiLoto ? 'Mi Loto' : 'Baloto Revancha';
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Image.asset(
-        AppAssets.bannerBalotoRevancha,
+        bannerAsset,
         width: double.infinity,
         fit: BoxFit.fitWidth,
         errorBuilder: (_, __, ___) => Container(
           height: 120,
           color: const Color(0xFF071647),
           alignment: Alignment.center,
-          child: Text('Baloto Revancha',
+          child: Text(fallbackLabel,
               style: GoogleFonts.inter(color: Colors.white, fontSize: 22)),
         ),
       ),
@@ -640,14 +688,20 @@ class _CarritoScreenState extends State<CarritoScreen> {
     );
   }
 
-  Widget _buildBola(int numero, {required bool isSuper, double size = 28}) {
+  Widget _buildBola(int numero, {required bool isSuper, double size = 28, bool isMiLoto = false}) {
+    final Color bg = isMiLoto
+        ? const Color(0xFF4A9FDC)
+        : (isSuper ? const Color(0xFFF70700) : const Color(0xFFFFE30C));
+    final Color textColor = isMiLoto
+        ? Colors.white
+        : (isSuper ? Colors.white : const Color(0xFF071647));
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2),
       width: size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isSuper ? const Color(0xFFF70700) : const Color(0xFFFFE30C),
+        color: bg,
       ),
       alignment: Alignment.center,
       child: Text(
@@ -655,7 +709,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
         style: GoogleFonts.inter(
           fontSize: size * 0.38,
           fontWeight: FontWeight.w700,
-          color: isSuper ? Colors.white : const Color(0xFF071647),
+          color: textColor,
         ),
       ),
     );

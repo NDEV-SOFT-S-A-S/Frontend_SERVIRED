@@ -12,6 +12,7 @@ import '../../features/juegos/presentation/screens/paga_todo_screen.dart';
 import '../../features/juegos/presentation/screens/superwin_screen.dart';
 import '../../features/juegos/presentation/screens/pata_millonaria_screen.dart';
 import '../../features/juegos/presentation/screens/baloto_revancha_screen.dart';
+import '../../features/juegos/presentation/screens/mi_loto_screen.dart';
 import '../../features/resultados/presentation/screens/resultados_screen.dart';
 import '../../features/resultados/presentation/screens/historial_resultados_screen.dart';
 import '../../features/home/presentation/widgets/resultado_card_widget.dart';
@@ -33,6 +34,7 @@ class AppRoutes {
   static const String pagaTodo          = '/juegos/paga-todo';
   static const String pataMillonaria    = '/juegos/pata-millonaria';
   static const String balotoRevancha    = '/juegos/baloto-revancha';
+  static const String miLoto            = '/juegos/mi-loto';
   static const String carrito           = '/carrito';
   static const String pagos = '/pagos';
   static const String wallet = '/wallet';
@@ -112,6 +114,11 @@ class AppRouter {
         path: AppRoutes.balotoRevancha,
         name: 'baloto-revancha',
         builder: (context, state) => const BalotoRevanchaScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.miLoto,
+        name: 'mi-loto',
+        builder: (context, state) => const MiLotoScreen(),
       ),
       GoRoute(
         path: AppRoutes.resultados,

@@ -108,6 +108,9 @@ abstract final class AppAssets {
   static const String iconCopa        = 'assets/images/Icon_copa.svg';
   static const String iconCalendario  = 'assets/images/calendar.svg';
 
+  // ── Mi Loto (HU-ML001) ───────────────────────────────────────────────────
+  static const String bannerMiLoto = 'assets/images/banner_mi_loto.png';
+
   // ── Baloto / Revancha ─────────────────────────────────────────────────────
   static const String bannerBalotoRevancha = 'assets/images/Banner-Baloto-Rebancha.png';
   static const String baloteraTube         = 'assets/images/balotera_tube.png';
