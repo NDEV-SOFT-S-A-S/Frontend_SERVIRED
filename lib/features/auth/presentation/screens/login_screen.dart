@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/document_type.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/login_redirect_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../widgets/input_error_box.dart';
@@ -218,7 +219,10 @@ class LoginScreen extends StatelessWidget {
               child: LoginFormWidget(
                 isMobile: true,
                 onClose: () => context.go(AppRoutes.home),
-                onLoginSuccess: () => context.go(AppRoutes.home),
+                onLoginSuccess: () {
+                  final dest = LoginRedirectService.consume();
+                  context.go(dest ?? AppRoutes.home);
+                },
                 onRecoveryRequested: (identifier) => context.push(
                   AppRoutes.otpVerification,
                   extra: {
@@ -245,7 +249,10 @@ class LoginScreen extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
               child: LoginFormWidget(
                 onClose: () => context.go(AppRoutes.home),
-                onLoginSuccess: () => context.go(AppRoutes.home),
+                onLoginSuccess: () {
+                  final dest = LoginRedirectService.consume();
+                  context.go(dest ?? AppRoutes.home);
+                },
                 onRecoveryRequested: (identifier) => context.push(
                   AppRoutes.otpVerification,
                   extra: {

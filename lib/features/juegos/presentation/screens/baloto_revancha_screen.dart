@@ -13,6 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/login_redirect_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../carrito/presentation/screens/carrito_screen.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
@@ -438,6 +439,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
 
   void _showLoginModal(BuildContext ctx) {
     if (MediaQuery.sizeOf(ctx).width < 600) {
+      LoginRedirectService.save(AppRoutes.balotoRevancha);
       ctx.push(AppRoutes.login);
       return;
     }
@@ -594,19 +596,9 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
 
     if (isMobile) {
       return Padding(
-        padding: padding,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 620),
-            child: Column(
-              children: [
-                _buildCardPrincipal(context, showCta: true),
-                const SizedBox(height: 16),
-                _buildApuestasAvanzadasCard(showCta: false),
-              ],
-            ),
-          ),
-        ),
+        // Figma: tarjeta a x=9 del borde de la pantalla
+        padding: const EdgeInsets.fromLTRB(9, 0, 9, 16),
+        child: _buildMobileUnifiedCard(context),
       );
     }
 
@@ -1028,28 +1020,27 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        if (_errorBalotas != null) ...[
-          const SizedBox(height: 4),
-          Center(child: _ErrorText(_errorBalotas!)),
-          const SizedBox(height: 10),
-        ],
-        if (_errorSuperbalota != null) ...[
-          const SizedBox(height: 4),
-          Center(child: _ErrorText(_errorSuperbalota!)),
-          const SizedBox(height: 10),
-        ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(flex: 54, child: _buildBalotasGrid()),
-            Padding(
-              padding: const EdgeInsets.only(top: 36, left: 4, right: 4),
-              child: const Icon(Icons.chevron_right,
+            const Padding(
+              padding: EdgeInsets.only(top: 36, left: 4, right: 4),
+              child: Icon(Icons.chevron_right,
                   color: Color(0xFF0C2577), size: 28),
             ),
             Expanded(flex: 44, child: _buildSuperbalotaGrid()),
           ],
         ),
+        // Errores debajo del Row — ancho completo para no desbordarse
+        if (_errorBalotas != null) ...[
+          const SizedBox(height: 8),
+          _ErrorText(_errorBalotas!),
+        ],
+        if (_errorSuperbalota != null) ...[
+          const SizedBox(height: 8),
+          _ErrorText(_errorSuperbalota!),
+        ],
         const SizedBox(height: 12),
         ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 291),
@@ -1212,86 +1203,90 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
       detenidas      = List.filled(6, !_balotas.isEmpty);
     }
 
-    // Stack: imagen del tubo de fondo + bolas responsivas encima
-    return Center(
-      child: GestureDetector(
-        onTap: _animandoBalotera ? null : _generarAutomatico,
-        child: MouseRegion(
-          cursor: _animandoBalotera
-              ? SystemMouseCursors.basic
-              : SystemMouseCursors.click,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: double.infinity),
-            child: AspectRatio(
-              aspectRatio: 408 / 140,
+    // Tubo responsivo: LayoutBuilder externo captura el ancho REAL disponible
+    // y desde él deriva: alto del tubo (aspecto fijo) y tamaño de cada bola.
+    return GestureDetector(
+      onTap: _animandoBalotera ? null : _generarAutomatico,
+      child: MouseRegion(
+        cursor: _animandoBalotera
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        child: LayoutBuilder(
+          builder: (context, outer) {
+            // ── Geometría del tubo ──────────────────────────────────────────
+            // Ancho = todo el espacio disponible (sin límite superior)
+            final tubeW = outer.maxWidth;
+            // Alto = proporción 408:190 → escala según el ancho real
+            final tubeH = tubeW * (190 / 408);
+
+            // ── Geometría de las bolas ──────────────────────────────────────
+            // Zona interior del tubo (sin tapas metálicas).
+            // Figma: tapas ~19.4% c/lado → área de vidrio ~61.2% del ancho total.
+            // Se usa 0.58 para dejar ~2% de margen en cada extremo y evitar
+            // que la primera y última balota queden detrás de los conectores.
+            final innerW  = tubeW * 0.58;
+            const nBalls  = 6;
+            const nGaps   = nBalls - 1;
+            // Gap entre bolas: 1% del ancho del tubo (escala con él)
+            final gap     = tubeW * 0.010;
+            // Bola por ancho disponible
+            final byW     = (innerW - nGaps * gap) / nBalls;
+            // Bola por alto disponible (margen 18% arriba/abajo)
+            final byH     = tubeH * 0.82;
+            // Tamaño final: el menor de los dos límites
+            final ballSz  = math.min(byW, byH).clamp(12.0, 72.0);
+            final fontSz  = (ballSz * 0.40).clamp(7.0, 24.0);
+            final rowW    = ballSz * nBalls + nGaps * gap;
+
+            return SizedBox(
+              width: tubeW,
+              height: tubeH,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Tubo de fondo
+                  // ── Imagen del tubo (ocupa todo) ──
                   Positioned.fill(
                     child: Image.asset(
                       AppAssets.baloteraTube,
                       fit: BoxFit.fill,
                     ),
                   ),
-                  // Bolas responsivas: calculan su tamaño según el ancho del tubo
-                  Positioned.fill(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        // Las tapas metálicas ocupan ~28% del ancho (14% cada lado)
-                        final availableW = constraints.maxWidth * 0.72;
-                        const totalBalls = 6;
-                        const gaps = totalBalls - 1;
-                        // Tamaño de bola: deja 5px de gap entre cada una
-                        final ballSize =
-                            ((availableW - gaps * 5) / totalBalls)
-                                .clamp(16.0, 62.0);
-                        final fontSize = (ballSize * 0.38).clamp(8.0, 22.0);
-
-                        return Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ...List.generate(_kBalotasRequeridas, (i) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 2.5),
-                                  child: _BalotaCircle(
-                                    numero: displayBalotas[i],
-                                    isSuper: false,
-                                    detenida: detenidas[i],
-                                    size: ballSize,
-                                    fontSize: fontSize,
-                                  ),
-                                );
-                              }),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 2.5),
-                                child: _BalotaCircle(
-                                  numero: displaySuper,
-                                  isSuper: true,
-                                  detenida: detenidas[5],
-                                  size: ballSize,
-                                  fontSize: fontSize,
-                                ),
-                              ),
-                            ],
+                  // ── Bolas centradas en la zona interior ──
+                  SizedBox(
+                    width: rowW,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ...List.generate(_kBalotasRequeridas, (i) =>
+                          _BalotaCircle(
+                            numero: displayBalotas[i],
+                            isSuper: false,
+                            detenida: detenidas[i],
+                            size: ballSz,
+                            fontSize: fontSz,
                           ),
-                        );
-                      },
+                        ),
+                        _BalotaCircle(
+                          numero: displaySuper,
+                          isSuper: true,
+                          detenida: detenidas[5],
+                          size: ballSz,
+                          fontSize: fontSz,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 
   // ── Números mostrados ─────────────────────────────────────────────────────
+
 
   Widget _buildNumerosMostrados() {
     final balotasSorted = _balotas.toList()..sort();
@@ -1334,94 +1329,136 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     VoidCallback? onAdd,
     required VoidCallback onDelete,
     required bool isEditing,
+    bool isMobile = false,
   }) {
-    return Container(
-      width: double.infinity,
-      height: 66,
-      padding: const EdgeInsets.only(left: 20, right: 14, top: 10, bottom: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEBEBEB),
-        borderRadius: BorderRadius.circular(80),
-      ),
-      clipBehavior: Clip.none,
-      child: Row(
-        children: [
-          // Izquierda: label + números scrollables
-          Expanded(
-            child: Row(
-              children: [
-                Text(
-                  'LÍNEA $numero',
-                  style: GoogleFonts.inter(
-                      fontSize: 16,
+    final double containerH  = isMobile ? 52 : 66;
+    final double labelFontSz = isMobile ? 12 : 16;
+    final double btnSize     = isMobile ? 26 : 38;
+    final double iconSz      = isMobile ? 14 : 18;
+    final EdgeInsets pad     = isMobile
+        ? const EdgeInsets.only(left: 10, right: 8, top: 0, bottom: 0)
+        : const EdgeInsets.only(left: 20, right: 14, top: 10, bottom: 10);
+
+    // ── Ancho derecho SIEMPRE fijo (máximo posible) ──────────────────────────
+    // Reserva espacio para: BR(30) + gap(4) + gap(5) + addBtn(26) + gap(5) + delBtn(26) + gap(2)
+    // Aunque BR o addBtn no se muestren, el espacio reservado es el mismo
+    // → las bolas siempre tienen el mismo tamaño.
+    final double rightFixedW = isMobile
+        ? 4 + 30 + 5 + btnSize + 5 + btnSize + 2   // 4+30+5+26+5+26+2 = 98px fijo
+        : 0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Ancho total disponible dentro del contenedor (descontando padding)
+        final double totalW   = constraints.maxWidth - pad.left - pad.right;
+
+        // Ancho del label "LÍNEA X" (aprox)
+        final double labelW   = isMobile ? 60.0 : 80.0;
+        final double gapLabel = 8.0;
+
+        // Espacio libre para los círculos
+        final double circlesW = totalW - labelW - gapLabel - rightFixedW;
+
+        // Número de círculos = balotas + superbalota (si existe)
+        final int nCircles    = balotas.length + (superbalota != null ? 1 : 0);
+        const double gap      = 4.0;
+
+        // Tamaño de cada círculo: llena el espacio, máx 30px en móvil / 30px desktop
+        final double maxSz    = isMobile ? 30.0 : 30.0;
+        final double calcSz   = nCircles > 0
+            ? (circlesW - gap * (nCircles - 1)) / nCircles
+            : maxSz;
+        final double numSz    = calcSz.clamp(14.0, maxSz);
+        final double fontSz   = (numSz * 0.42).clamp(8.0, 14.0);
+
+        return Container(
+          width: double.infinity,
+          height: containerH,
+          padding: pad,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEBEBEB),
+            borderRadius: BorderRadius.circular(80),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Label "LÍNEA X"
+              Text(
+                'LÍNEA $numero',
+                style: GoogleFonts.inter(
+                    fontSize: labelFontSz,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0C2577)),
+              ),
+              SizedBox(width: gapLabel),
+              // Círculos — tamaño calculado, sin scroll
+              ...balotas.map((n) => Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: _NumCircle(numero: n, isSuper: false,
+                        size: numSz, fontSize: fontSz),
+                  )),
+              if (superbalota != null) ...[
+                const SizedBox(width: 4),
+                _NumCircle(numero: superbalota, isSuper: true,
+                    size: numSz, fontSize: fontSz),
+              ],
+              const Spacer(),
+              // Badge BR
+              if (_conRevancha) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 5 : 8,
+                    vertical: isMobile ? 2 : 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF81515),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'BR',
+                    style: GoogleFonts.poppins(
+                      fontSize: isMobile ? 10 : 13,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0C2577)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ...balotas.map((n) => Padding(
-                              padding: const EdgeInsets.only(right: 3),
-                              child: _NumCircle(
-                                  numero: n, isSuper: false, size: 30),
-                            )),
-                        if (superbalota != null) ...[
-                          const SizedBox(width: 3),
-                          _NumCircle(
-                              numero: superbalota, isSuper: true, size: 30),
-                        ],
-                      ],
+                      color: Colors.white,
+                      height: 1.0,
                     ),
                   ),
                 ),
               ],
-            ),
-          ),
-          // Derecha: BR + botones (siempre visibles)
-          if (_conRevancha) ...[
-            const SizedBox(width: 8),
-            Text(
-              'BR',
-              style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFFF81515)),
-            ),
-          ],
-          const SizedBox(width: 8),
-          if (isEditing && onAdd != null) ...[
-            GestureDetector(
-              onTap: onAdd,
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: const BoxDecoration(
-                    color: Color(0xFF112044), shape: BoxShape.circle),
-                child: const Icon(Icons.add, color: Colors.white, size: 18),
+              const SizedBox(width: 5),
+              // Botón agregar
+              if (isEditing && onAdd != null) ...[
+                GestureDetector(
+                  onTap: onAdd,
+                  child: Container(
+                    width: btnSize,
+                    height: btnSize,
+                    decoration: const BoxDecoration(
+                        color: Color(0xFF112044), shape: BoxShape.circle),
+                    child: Icon(Icons.add, color: Colors.white, size: iconSz),
+                  ),
+                ),
+                const SizedBox(width: 5),
+              ],
+              // Botón eliminar
+              GestureDetector(
+                onTap: onDelete,
+                child: Container(
+                  width: btnSize,
+                  height: btnSize,
+                  decoration: const BoxDecoration(
+                      color: Color(0xFF112044), shape: BoxShape.circle),
+                  child: Icon(Icons.delete_outline,
+                      color: Colors.white, size: iconSz),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          GestureDetector(
-            onTap: onDelete,
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                  color: const Color(0xFF112044),
-                  borderRadius: BorderRadius.circular(19)),
-              child: const Icon(Icons.delete_outline,
-                  color: Colors.white, size: 18),
-            ),
-          ),
-          const SizedBox(width: 6),
-        ],
-      ),
-    );
+              const SizedBox(width: 2),
+            ],
+          ),       // Row
+        );         // Container
+      },           // builder
+    );             // LayoutBuilder
   }
 
   // ── Botones acción — HU-BAL001 (Limpiar, Automática, Continuar, Cancelar) ─
@@ -2225,7 +2262,420 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
       ),
     );
   }
-}
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // MOBILE — Tarjeta unificada (Figma node 1282:5696 · 402×1229)
+  // Todo el contenido en UNA tarjeta blanca (384×1057, rounded-30, padding 20)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Tarjeta única que agrupa TODOS los bloques del flujo móvil:
+  /// banner → toggle → números → línea → apuestas avanzadas → resumen → CTA
+  Widget _buildMobileUnifiedCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ① Banner Baloto Revancha (344×93)
+          _buildBanner(),
+          const SizedBox(height: 18),
+
+          // ② Geo bloqueada (E6)
+          if (_geoEstado == _GeoEstado.bloqueada) ...[
+            _buildGeoBloqueadaBanner(),
+            const SizedBox(height: 12),
+          ],
+
+          // ③ Toggle MANUAL / AUTOMÁTICO (264×27, centrado)
+          _buildModoToggle(),
+          const SizedBox(height: 18),
+
+          // ④ Sección de números (layout vertical móvil)
+          if (_modoAutomatico)
+            _buildSeccionAutomaticaMobile()
+          else
+            _buildSeccionManualMobile(),
+
+          // ⑤ "Apuestas Avanzadas" — Inter Bold 19.5px, #0C2577
+          Text(
+            'Apuestas Avanzadas',
+            style: GoogleFonts.inter(
+              fontSize: 19.5,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0C2577),
+              height: 28 / 19.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+
+          // ⑥ Selector Revancha (compacto móvil 336px)
+          _buildRevanchaMobile(),
+          const SizedBox(height: 10),
+
+          // ⑦ Descripción — Inter Regular 16px, #0D2677
+          Text(
+            '¡Adelanta tus apuestas hasta en 9 sorteos y ahorra tiempo!',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF0D2677),
+              height: 24 / 16,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+
+          // ⑧ Dropdown sorteos (364×48, border #0C2577, rounded-30)
+          _buildSorteosDropdown(),
+          const SizedBox(height: 20),
+
+          // ⑨ "Resumen de la apuesta" — Inter SemiBold 19.5px
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              'Resumen de la apuesta',
+              style: GoogleFonts.inter(
+                fontSize: 19.5,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF0C2577),
+                height: 1.0,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // ⑩ Filas de resumen (362×35 c/u, rounded-30)
+          _buildResumenRow(
+            'Total apuestas',
+            _fmtCop(_kPrecioBaloto * _cantidadSorteos),
+            bg: const Color(0xFFF0F0F0),
+          ),
+          const SizedBox(height: 4),
+          _buildResumenRow(
+            'Total a pagar',
+            _fmtCop(_totalPagar),
+            bg: const Color(0xFFF7F7F7),
+            isBold: true,
+          ),
+          const SizedBox(height: 20),
+
+          // ⑪ CTA "AÑADIR AL CARRITO" (209×41, #43B75D, rounded-26)
+          SizedBox(
+            width: 209,
+            height: 41,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF43B75D),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                elevation: 0,
+                padding: EdgeInsets.zero,
+              ),
+              onPressed: _irAlCarrito,
+              child: Text(
+                'AÑADIR AL CARRITO',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 24 / 16,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Cancelar
+          TextButton(
+            onPressed: () => _cancelar(context),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF6B7280),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Sección manual móvil — números en vertical (Figma node 1282:5699) ────
+  // Layout: título → grid 43 balotas (24px) → título → grid 16 superbalota → LÍNEA
+
+  Widget _buildSeccionManualMobile() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Error balotas
+        if (_errorBalotas != null) ...[
+          Center(child: _ErrorText(_errorBalotas!)),
+          const SizedBox(height: 10),
+        ],
+
+        // "Selecciona 5 números" — Inter Bold 19.5px (Figma: h=33, centrado en 344)
+        Text(
+          'Selecciona 5 números',
+          style: GoogleFonts.inter(
+            fontSize: 19.5,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0C2577),
+            height: 28 / 19.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+
+        // Grid balotas 1-43 (10 cols, 24px, gap=9) — Figma 344×171
+        Center(child: _buildBalotasGridMobile()),
+        const SizedBox(height: 8),
+
+        // "Selecciona la superbalota" — Inter Bold 19.5px
+        Text(
+          'Selecciona la superbalota',
+          style: GoogleFonts.inter(
+            fontSize: 19.5,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0C2577),
+            height: 28 / 19.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+
+        // Error superbalota
+        if (_errorSuperbalota != null) ...[
+          Center(child: _ErrorText(_errorSuperbalota!)),
+          const SizedBox(height: 10),
+        ],
+
+        // Grid superbalota 1-16 (flex-wrap, 24px, gap-x=9 gap-y=8) — Figma 321×56
+        Center(child: _buildSuperbalotaGridMobile()),
+        const SizedBox(height: 12),
+
+        // Barra LÍNEA (45px, mobile sizing)
+        _buildNumerosMostradosMobile(),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
+
+  // ── Sección automática móvil ──────────────────────────────────────────────
+  // Reutiliza _buildBalotera() + botones Figma (191×37 AGREGAR, 37×37 refresh)
+
+  Widget _buildSeccionAutomaticaMobile() {
+    final tieneNumeros = _balotas.isNotEmpty && _superbalota != null;
+    return Column(
+      children: [
+        _buildBalotera(),
+        const SizedBox(height: 8),
+        Center(
+          child: tieneNumeros
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // AGREGAR — 191×37, amarillo #FFE30C (Figma "Botonnnnn")
+                    GestureDetector(
+                      onTap: _agregarLinea,
+                      child: Container(
+                        width: 191,
+                        height: 37,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE30C),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'AGREGAR',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0D1B3E),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Refresh — 37×37 círculo gris (Figma "Agregar eliminar")
+                    GestureDetector(
+                      onTap: _generarAutomatico,
+                      child: Container(
+                        width: 37,
+                        height: 37,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFFE5E7EB),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.refresh_rounded,
+                          color: Color(0xFF374151),
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : GestureDetector(
+                  onTap: _generarAutomatico,
+                  child: Container(
+                    width: 191,
+                    height: 37,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53E3E),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'JUGAR',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+        const SizedBox(height: 14),
+        _buildNumerosMostradosMobile(),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
+
+  // ── Grid balotas móvil — Figma: 24×24px, gap=9, 10 cols ─────────────────
+  // 43 bolas, 10 por fila → 5 filas, total: 321×156px (ajusta a 344 contenedor)
+
+  Widget _buildBalotasGridMobile() {
+    const double ballSize = 24;
+    const double gap = 9;
+    return Wrap(
+      spacing: gap,
+      runSpacing: gap,
+      children: List.generate(_kBalotaMax, (i) {
+        final n = i + 1;
+        return _BalotaCell(
+          numero: n,
+          isSelected: _balotas.contains(n),
+          isSuperbalota: false,
+          size: ballSize,
+          onTap: () => _toggleBalota(n),
+        );
+      }),
+    );
+  }
+
+  // ── Grid superbalota móvil — Figma: 24×24px, gap-x=9 gap-y=8, 10 cols ──
+  // 16 bolas → fila1: 10, fila2: 6, total: 321×56px
+
+  Widget _buildSuperbalotaGridMobile() {
+    return Wrap(
+      spacing: 9,    // column gap (Figma gap-[8px_9px] → col-gap=9)
+      runSpacing: 8, // row gap (Figma gap-[8px_9px] → row-gap=8)
+      children: List.generate(_kSuperbalotaMax, (i) {
+        final n = i + 1;
+        return _BalotaCell(
+          numero: n,
+          isSelected: _superbalota == n,
+          isSuperbalota: true,
+          size: 24,
+          onTap: () => _toggleSuperbalota(n),
+        );
+      }),
+    );
+  }
+
+  // ── Números mostrados móvil (barras LÍNEA con sizing mobile) ─────────────
+
+  Widget _buildNumerosMostradosMobile() {
+    final balotasSorted = _balotas.toList()..sort();
+    final lineaNum = _lineasGuardadas.length + 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ..._lineasGuardadas.asMap().entries.map((e) {
+          final idx = e.key;
+          final linea = e.value;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _buildLineaBar(
+              numero: linea.numero,
+              balotas: linea.balotas,
+              superbalota: linea.superbalota,
+              onDelete: () => _eliminarLinea(idx),
+              isEditing: false,
+              isMobile: true,
+            ),
+          );
+        }),
+        _buildLineaBar(
+          numero: lineaNum,
+          balotas: balotasSorted,
+          superbalota: _superbalota,
+          onAdd: _agregarLinea,
+          onDelete: _limpiar,
+          isEditing: true,
+          isMobile: true,
+        ),
+      ],
+    );
+  }
+
+  // ── Revancha móvil — Figma: 336×61, SI/NO radio compacto ─────────────────
+  // Frame 2085663289: "¿Deseas Jugar con Revancha?" + marcadores SI/NO
+
+  Widget _buildRevanchaMobile() {
+    return SizedBox(
+      width: 336,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // "¿Deseas Jugar con Revancha?" — Inter Medium 15px, #0D2677
+          Text(
+            '¿Deseas Jugar con Revancha?',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF0D2677),
+              height: 24 / 15,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _RadioOpcion(
+                label: 'SI',
+                selected: _conRevancha,
+                onTap: () => setState(() => _conRevancha = true),
+              ),
+              const SizedBox(width: 40),
+              _RadioOpcion(
+                label: 'NO',
+                selected: !_conRevancha,
+                onTap: () => setState(() => _conRevancha = false),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+} // end _BalotoRevanchaScreenState
 
 // ── Widgets auxiliares ────────────────────────────────────────────────────────
 
@@ -2289,14 +2739,20 @@ class _BalotaCell extends StatelessWidget {
 }
 
 class _NumCircle extends StatelessWidget {
-  const _NumCircle(
-      {required this.numero, required this.isSuper, this.size = 26});
-  final int numero;
-  final bool isSuper;
+  const _NumCircle({
+    required this.numero,
+    required this.isSuper,
+    this.size = 26,
+    this.fontSize,
+  });
+  final int    numero;
+  final bool   isSuper;
   final double size;
+  final double? fontSize; // si null, se calcula desde size
 
   @override
   Widget build(BuildContext context) {
+    final double fs = fontSize ?? (size * 0.38);
     return Container(
       width: size,
       height: size,
@@ -2308,9 +2764,10 @@ class _NumCircle extends StatelessWidget {
       child: Text(
         numero.toString().padLeft(2, '0'),
         style: GoogleFonts.inter(
-          fontSize: size * 0.38,
+          fontSize: fs,
           fontWeight: FontWeight.w800,
           color: isSuper ? Colors.white : const Color(0xFF0C2577),
+          height: 1.0,
         ),
       ),
     );
@@ -2530,23 +2987,28 @@ class _ErrorText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFFFEE2E2),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.cancel_outlined,
-              color: Color(0xFFDC2626), size: 22),
-          const SizedBox(width: 10),
-          Text(
-            text,
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFFDC2626),
+              color: Color(0xFFDC2626), size: 20),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              text,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFFDC2626),
+                height: 1.4,
+              ),
+              softWrap: true,
             ),
           ),
         ],
