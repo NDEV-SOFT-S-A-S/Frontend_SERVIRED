@@ -20,12 +20,14 @@ class _BetLine {
   const _BetLine({required this.numero});
   final String numero;
 
-  static const int betValue   = 3000;      // valor fijo parametrizable; actualmente $3.000 (HU + resolución)
+  static const int betValue =
+      3000; // valor fijo parametrizable; actualmente $3.000 (HU + resolución)
   // IVA = $3.000 * 19/119 = $478,99 ≈ $479 (resolución tabla: base $2.521,01 + IVA = $3.000 total)
   // El Figma mostraba $460, pero la resolución G-000004 es la fuente definitiva.
-  static const int ivaValue   = 479;
-  static const int prizeValue = 13125000;  // $2.521,01 × $5.206,25 = $13.125.000 (resolución tabla)
-  static const int maxDigits  = 4;         // solo 4 cifras (HU)
+  static const int ivaValue = 479;
+  static const int prizeValue =
+      13125000; // $2.521,01 × $5.206,25 = $13.125.000 (resolución tabla)
+  static const int maxDigits = 4; // solo 4 cifras (HU)
 }
 
 // ── Screen ──────────────────────────────────────────────────────────────────
@@ -91,14 +93,14 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
   int get _totalBet => _lines.length * _BetLine.betValue;
   int get _totalIva => _lines.length * _BetLine.ivaValue;
   // Podrías ganar hasta = premio por mejor línea (todas tienen el mismo premio)
-  int get _maxPrize  => _lines.isEmpty ? 0 : _BetLine.prizeValue;
+  int get _maxPrize => _lines.isEmpty ? 0 : _BetLine.prizeValue;
 
   static String _fmt(int amount) {
     final s = amount.toString();
     final buf = StringBuffer(r'$');
     for (int i = 0; i < s.length; i++) {
       if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-    buf.write(s[i]);
+      buf.write(s[i]);
     }
     return buf.toString();
   }
@@ -463,9 +465,7 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
           const SizedBox(width: 8),
           for (int i = 0; i < 4; i++) ...[
             _DigitBall(
-              digit: (i < _numeroCtrl.text.length)
-                  ? _numeroCtrl.text[i]
-                  : '?',
+              digit: (i < _numeroCtrl.text.length) ? _numeroCtrl.text[i] : '?',
             ),
             if (i < 3) const SizedBox(width: 5),
           ],
@@ -578,7 +578,6 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
           Container(
             constraints: const BoxConstraints(maxWidth: 500),
             child: Column(
@@ -602,8 +601,7 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
                 if (_lines.isEmpty)
                   _buildEmptyLine()
                 else
-                  for (int i = 0; i < _lines.length; i++)
-                    _buildBetLineRow(i),
+                  for (int i = 0; i < _lines.length; i++) _buildBetLineRow(i),
 
                 const SizedBox(height: 8),
 
@@ -672,8 +670,7 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
               children: const [
                 TextSpan(text: '4c  '),
                 TextSpan(
-                    text: '????',
-                    style: TextStyle(color: Color(0xFFFFCC00))),
+                    text: '????', style: TextStyle(color: Color(0xFFFFCC00))),
                 TextSpan(text: '  Lotería '),
                 TextSpan(
                     text: 'Chont.día',
@@ -745,8 +742,8 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
               const SizedBox(width: 6),
               GestureDetector(
                 onTap: () => _removeLine(i),
-                child: const Icon(Icons.close,
-                    size: 16, color: Color(0xFF4B5563)),
+                child:
+                    const Icon(Icons.close, size: 16, color: Color(0xFF4B5563)),
               ),
             ],
           ),
@@ -786,8 +783,8 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor:
               enabled ? const Color(0xFF43B75D) : const Color(0xFFBDD7EE),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(26)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
           elevation: 0,
         ),
         onPressed: enabled ? _showConfirmDialog : null,
@@ -819,8 +816,8 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
         ),
         content: Text(
           '${_lines.length} apuesta${_lines.length > 1 ? 's' : ''} Superwin · Total ${_fmt(_totalBet)}',
-          style: GoogleFonts.inter(
-              fontSize: 14, color: const Color(0xFF4B5563)),
+          style:
+              GoogleFonts.inter(fontSize: 14, color: const Color(0xFF4B5563)),
           textAlign: TextAlign.center,
         ),
         actionsAlignment: MainAxisAlignment.spaceEvenly,
@@ -866,8 +863,7 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.check_circle,
-              color: Color(0xFF43B75D), size: 32),
+          const Icon(Icons.check_circle, color: Color(0xFF43B75D), size: 32),
           const SizedBox(height: 8),
           Text(
             '¡La apuesta se registró con éxito!',
@@ -880,8 +876,8 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
           const SizedBox(height: 4),
           Text(
             'Producto: Superwin · Lotería: Chontico Día',
-            style: GoogleFonts.inter(
-                fontSize: 13, color: const Color(0xFF2E7D32)),
+            style:
+                GoogleFonts.inter(fontSize: 13, color: const Color(0xFF2E7D32)),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
@@ -901,9 +897,8 @@ class _SuperwinScreenState extends State<SuperwinScreen> {
   }
 
   Widget _buildPrizeButton() {
-    final label = _maxPrize == 0
-        ? '\$ 13.125.000 COP'
-        : '${_fmt(_maxPrize)} COP';
+    final label =
+        _maxPrize == 0 ? '\$ 13.125.000 COP' : '${_fmt(_maxPrize)} COP';
     return Container(
       width: double.infinity,
       height: 80,

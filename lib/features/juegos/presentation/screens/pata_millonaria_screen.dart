@@ -19,20 +19,23 @@ import '../../../home/presentation/widgets/navbar_widget.dart';
 // ── Negocio HU-PM001 ─────────────────────────────────────────────────────────
 
 const _kLoteriaData = <({String name, String asset})>[
-  (name: 'Lotería del\nRisaralda',      asset: AppAssets.logoRisaralda),
-  (name: 'Lotería del\nMeta',           asset: AppAssets.logoLoteriaMeta),
-  (name: 'Lotería del\nQuindío',        asset: AppAssets.logoLoteriaQuindio),
-  (name: 'Lotería del\nCauca',          asset: AppAssets.logoLoteriaCauca),
-  (name: 'Lotería de\nMedellín',        asset: AppAssets.logoLoteriaMedellin),
-  (name: 'Extra Lotería\nde Medellín',  asset: AppAssets.logoLoteriaExtraMedellin),
-  (name: 'Lotería de\nManizales',       asset: AppAssets.logoLoteriaManizales),
-  (name: 'Lotería de\nCundinamarca',    asset: AppAssets.logoLoteriaCundinamarca),
-  (name: 'Lotería de\nBoyacá',          asset: AppAssets.logoLoteriaBoyaca),
-  (name: 'Lotería de\nBogotá',          asset: AppAssets.logoLoteriaBogota),
-  (name: 'Lotería del\nValle',          asset: AppAssets.logoValle),
-  (name: 'Lotería del\nTolima',         asset: AppAssets.logoLoteriaTolima),
-  (name: 'Lotería del\nHuila',          asset: AppAssets.logoLoteriaHuila),
-  (name: 'Lotería de\nSantander',       asset: AppAssets.logoLoteriaSantander),
+  (name: 'Lotería del\nRisaralda', asset: AppAssets.logoRisaralda),
+  (name: 'Lotería del\nMeta', asset: AppAssets.logoLoteriaMeta),
+  (name: 'Lotería del\nQuindío', asset: AppAssets.logoLoteriaQuindio),
+  (name: 'Lotería del\nCauca', asset: AppAssets.logoLoteriaCauca),
+  (name: 'Lotería de\nMedellín', asset: AppAssets.logoLoteriaMedellin),
+  (
+    name: 'Extra Lotería\nde Medellín',
+    asset: AppAssets.logoLoteriaExtraMedellin
+  ),
+  (name: 'Lotería de\nManizales', asset: AppAssets.logoLoteriaManizales),
+  (name: 'Lotería de\nCundinamarca', asset: AppAssets.logoLoteriaCundinamarca),
+  (name: 'Lotería de\nBoyacá', asset: AppAssets.logoLoteriaBoyaca),
+  (name: 'Lotería de\nBogotá', asset: AppAssets.logoLoteriaBogota),
+  (name: 'Lotería del\nValle', asset: AppAssets.logoValle),
+  (name: 'Lotería del\nTolima', asset: AppAssets.logoLoteriaTolima),
+  (name: 'Lotería del\nHuila', asset: AppAssets.logoLoteriaHuila),
+  (name: 'Lotería de\nSantander', asset: AppAssets.logoLoteriaSantander),
 ];
 
 // Distribución del valor cerrado (IVA incluido)
@@ -171,14 +174,25 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
     bool ok = true;
     setState(() {
       _errorValor = _valor == null ? 'Selecciona el valor de la apuesta' : null;
-      _errorLoteriaAP = _loteriaAPIdx == null ? 'Selecciona una lotería para tu apuesta principal' : null;
+      _errorLoteriaAP = _loteriaAPIdx == null
+          ? 'Selecciona una lotería para tu apuesta principal'
+          : null;
       final ap = _apCtrl.text.trim();
-      _errorNumeroAP = ap.isEmpty || ap.length != 2 ? 'El número debe tener exactamente 2 cifras' : null;
-      _errorLoteriaIC = _loteriaICIdx == null ? 'Selecciona una lotería para el incentivo' : null;
+      _errorNumeroAP = ap.isEmpty || ap.length != 2
+          ? 'El número debe tener exactamente 2 cifras'
+          : null;
+      _errorLoteriaIC = _loteriaICIdx == null
+          ? 'Selecciona una lotería para el incentivo'
+          : null;
       final ic = _icCtrl.text.trim();
-      _errorNumeroIC = ic.isEmpty || ic.length != 3 ? 'El número debe tener exactamente 3 cifras' : null;
-      if (_loteriaAPIdx != null && _loteriaICIdx != null && _loteriaAPIdx == _loteriaICIdx) {
-        _errorMismaLoteria = 'La lotería del incentivo debe ser diferente a la de la apuesta principal';
+      _errorNumeroIC = ic.isEmpty || ic.length != 3
+          ? 'El número debe tener exactamente 3 cifras'
+          : null;
+      if (_loteriaAPIdx != null &&
+          _loteriaICIdx != null &&
+          _loteriaAPIdx == _loteriaICIdx) {
+        _errorMismaLoteria =
+            'La lotería del incentivo debe ser diferente a la de la apuesta principal';
       } else {
         _errorMismaLoteria = null;
       }
@@ -195,14 +209,16 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
   void _agregarLinea() {
     if (!_validateCurrentLine()) return;
     setState(() {
-      _betLines.add(_BetLine(
-        fechaIdx: _selectedFechaIdx,
-        valor: _valor!,
-        loteriaAPIdx: _loteriaAPIdx!,
-        numeroAP: _apCtrl.text.trim(),
-        loteriaICIdx: _loteriaICIdx!,
-        numeroIC: _icCtrl.text.trim(),
-      ),);
+      _betLines.add(
+        _BetLine(
+          fechaIdx: _selectedFechaIdx,
+          valor: _valor!,
+          loteriaAPIdx: _loteriaAPIdx!,
+          numeroAP: _apCtrl.text.trim(),
+          loteriaICIdx: _loteriaICIdx!,
+          numeroIC: _icCtrl.text.trim(),
+        ),
+      );
       // Limpia formulario para nueva línea, preservando fecha y valor
       _loteriaAPIdx = null;
       _loteriaICIdx = null;
@@ -264,14 +280,20 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _NavIcon(icon: Icons.home_outlined, label: 'Inicio',
+          _NavIcon(
+              icon: Icons.home_outlined,
+              label: 'Inicio',
               onTap: () => context.go(AppRoutes.home)),
-          _NavIcon(icon: Icons.sports_esports_outlined, label: 'Juegos',
-              isActive: true, onTap: () => context.go(AppRoutes.juegos)),
-          _NavIcon(icon: Icons.shopping_cart_outlined, label: 'Carrito',
+          _NavIcon(
+              icon: Icons.sports_esports_outlined,
+              label: 'Juegos',
+              isActive: true,
+              onTap: () => context.go(AppRoutes.juegos)),
+          _NavIcon(
+              icon: Icons.shopping_cart_outlined,
+              label: 'Carrito',
               onTap: () {}),
-          _NavIcon(icon: Icons.person_outline, label: 'Perfil',
-              onTap: () {}),
+          _NavIcon(icon: Icons.person_outline, label: 'Perfil', onTap: () {}),
         ],
       ),
     );
@@ -346,7 +368,9 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                 ),
               ),
               Positioned(
-                top: 0, left: 0, right: 0,
+                top: 0,
+                left: 0,
+                right: 0,
                 child: NavbarWidget(
                   isLoggedIn: loggedIn,
                   activeNavItem: 'Juegos',
@@ -563,7 +587,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _StepLabel(numero: '1', texto: 'Elige el día en que juegas tu apuesta'),
+        const _StepLabel(
+            numero: '1', texto: 'Elige el día en que juegas tu apuesta'),
         const SizedBox(height: 12),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -604,17 +629,21 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
         ),
         const SizedBox(height: 8),
         Row(
-          children: _ValorApuesta.values.map((v) => Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: _ValorChip(
-              label: _fmtCop(v.amount),
-              isSelected: _valor == v,
-              onTap: () => setState(() {
-                _valor = v;
-                _errorValor = null;
-              }),
-            ),
-          ),).toList(),
+          children: _ValorApuesta.values
+              .map(
+                (v) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _ValorChip(
+                    label: _fmtCop(v.amount),
+                    isSelected: _valor == v,
+                    onTap: () => setState(() {
+                      _valor = v;
+                      _errorValor = null;
+                    }),
+                  ),
+                ),
+              )
+              .toList(),
         ),
         if (_errorValor != null) ...[
           const SizedBox(height: 4),
@@ -768,7 +797,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
               ),
             ),
             onPressed: _agregarLinea,
-            icon: const Icon(Icons.add_circle_outline, color: Color(0xFF1372AE), size: 20),
+            icon: const Icon(Icons.add_circle_outline,
+                color: Color(0xFF1372AE), size: 20),
             label: Text(
               'Agregar otra línea de apuesta',
               style: GoogleFonts.inter(
@@ -859,7 +889,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFFFCC00), width: 2)),
+            border:
+                Border(bottom: BorderSide(color: Color(0xFFFFCC00), width: 2)),
           ),
           child: Row(
             children: [
@@ -867,18 +898,21 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                 width: 28,
                 child: Text('No.',
                     style: GoogleFonts.inter(
-                        fontSize: 12, fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                         color: const Color(0xFF2C2E6F))),
               ),
               Expanded(
                 child: Text('Lotería',
                     style: GoogleFonts.inter(
-                        fontSize: 12, fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                         color: const Color(0xFF2C2E6F))),
               ),
               Text('Valor apuesta',
                   style: GoogleFonts.inter(
-                      fontSize: 12, fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                       color: const Color(0xFF2C2E6F))),
             ],
           ),
@@ -897,7 +931,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                   width: 28,
                   child: Text('${i + 1}',
                       style: GoogleFonts.inter(
-                          fontSize: 13, fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFF2C2E6F))),
                 ),
                 Expanded(
@@ -906,8 +941,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                     children: [
                       RichText(
                         text: TextSpan(
-                          style: GoogleFonts.inter(fontSize: 12,
-                              color: const Color(0xFF374151)),
+                          style: GoogleFonts.inter(
+                              fontSize: 12, color: const Color(0xFF374151)),
                           children: [
                             const TextSpan(text: 'AP '),
                             TextSpan(
@@ -917,7 +952,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                                   fontWeight: FontWeight.w700),
                             ),
                             TextSpan(
-                              text: '  ${_kLoteriaData[_betLines[i].loteriaAPIdx].name.replaceAll('\n', ' ')}',
+                              text:
+                                  '  ${_kLoteriaData[_betLines[i].loteriaAPIdx].name.replaceAll('\n', ' ')}',
                             ),
                           ],
                         ),
@@ -925,8 +961,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                       const SizedBox(height: 2),
                       RichText(
                         text: TextSpan(
-                          style: GoogleFonts.inter(fontSize: 12,
-                              color: const Color(0xFF374151)),
+                          style: GoogleFonts.inter(
+                              fontSize: 12, color: const Color(0xFF374151)),
                           children: [
                             const TextSpan(text: 'IC '),
                             TextSpan(
@@ -936,7 +972,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                                   fontWeight: FontWeight.w700),
                             ),
                             TextSpan(
-                              text: '  ${_kLoteriaData[_betLines[i].loteriaICIdx].name.replaceAll('\n', ' ')}',
+                              text:
+                                  '  ${_kLoteriaData[_betLines[i].loteriaICIdx].name.replaceAll('\n', ' ')}',
                             ),
                           ],
                         ),
@@ -947,7 +984,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                 Text(
                   _fmtCop(_betLines[i].valor.amount),
                   style: GoogleFonts.inter(
-                      fontSize: 13, fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                       color: const Color(0xFF2C2E6F)),
                 ),
               ],
@@ -1024,7 +1062,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                     _buildFilaResumen('IVA incluido', _fmtCop(totalIva)),
                     _buildFilaResumen('Valor apuesta', _fmtCop(totalAmount)),
                     const Divider(height: 16, color: Color(0xFFE5E7EB)),
-                    _buildFilaResumen('Total a pagar', _fmtCop(totalAmount), isBold: true),
+                    _buildFilaResumen('Total a pagar', _fmtCop(totalAmount),
+                        isBold: true),
                   ],
                 ),
               ),
@@ -1041,7 +1080,8 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.check_circle, color: Color(0xFF43B75D), size: 36),
+                    const Icon(Icons.check_circle,
+                        color: Color(0xFF43B75D), size: 36),
                     const SizedBox(height: 8),
                     Text(
                       '¡Apuesta registrada exitosamente!',
@@ -1092,8 +1132,14 @@ class _PataMillonariaScreenState extends State<PataMillonariaScreen> {
 
   Widget _buildPlanPremios(_ValorApuesta valor) {
     final premios = [
-      (titulo: 'Premio\noportunidad 1', valor: _fmtCop(_premioOp1(valor.apValor))),
-      (titulo: 'Premio\noportunidad 2', valor: _fmtCop(_premioOp2(valor.icValor))),
+      (
+        titulo: 'Premio\noportunidad 1',
+        valor: _fmtCop(_premioOp1(valor.apValor))
+      ),
+      (
+        titulo: 'Premio\noportunidad 2',
+        valor: _fmtCop(_premioOp2(valor.icValor))
+      ),
       (titulo: 'Premio\nmayor', valor: _fmtCop(_premioMayor(valor.icValor))),
     ];
 
@@ -1198,10 +1244,10 @@ class _Divider extends StatelessWidget {
   const _Divider();
   @override
   Widget build(BuildContext context) => const Divider(
-    color: Color(0xFFE5E7EB),
-    height: 1,
-    thickness: 1,
-  );
+        color: Color(0xFFE5E7EB),
+        height: 1,
+        thickness: 1,
+      );
 }
 
 class _StepLabel extends StatelessWidget {
@@ -1268,11 +1314,17 @@ class _FechaChip extends StatelessWidget {
           color: isSelected ? const Color(0xFFFECA0C) : const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFFFECA0C) : const Color(0xFFD1D5DB),
+            color:
+                isSelected ? const Color(0xFFFECA0C) : const Color(0xFFD1D5DB),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
-              ? [const BoxShadow(color: Color(0x30FECA0C), blurRadius: 6, offset: Offset(0, 2))]
+              ? [
+                  const BoxShadow(
+                      color: Color(0x30FECA0C),
+                      blurRadius: 6,
+                      offset: Offset(0, 2))
+                ]
               : null,
         ),
         child: Text(
@@ -1280,7 +1332,8 @@ class _FechaChip extends StatelessWidget {
           style: GoogleFonts.inter(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: isSelected ? const Color(0xFF1372AE) : const Color(0xFF374151),
+            color:
+                isSelected ? const Color(0xFF1372AE) : const Color(0xFF374151),
           ),
         ),
       ),
@@ -1309,7 +1362,8 @@ class _ValorChip extends StatelessWidget {
           color: isSelected ? const Color(0xFFFECA0C) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFFFECA0C) : const Color(0xFFD1D5DB),
+            color:
+                isSelected ? const Color(0xFFFECA0C) : const Color(0xFFD1D5DB),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
@@ -1327,7 +1381,8 @@ class _ValorChip extends StatelessWidget {
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: isSelected ? const Color(0xFF1372AE) : const Color(0xFF374151),
+            color:
+                isSelected ? const Color(0xFF1372AE) : const Color(0xFF374151),
           ),
         ),
       ),
@@ -1403,7 +1458,9 @@ class _LoteriaCell extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isSelected ? const Color(0xFFFFCC00) : const Color(0xFFE5E7EB),
+                color: isSelected
+                    ? const Color(0xFFFFCC00)
+                    : const Color(0xFFE5E7EB),
                 width: isSelected ? 2 : 1,
               ),
               boxShadow: isSelected
@@ -1417,44 +1474,44 @@ class _LoteriaCell extends StatelessWidget {
                   : null,
             ),
             child: Column(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              Expanded(
-                flex: 3,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 4, 2, 1),
-                  child: Image.asset(
-                    asset,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.image_not_supported_outlined,
-                      color: Color(0xFFD1D5DB),
-                      size: 14,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(2, 4, 2, 1),
+                    child: Image.asset(
+                      asset,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: Color(0xFFD1D5DB),
+                        size: 14,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 1),
-                  child: Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 7,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0F5886),
-                      height: 1.1,
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1),
+                    child: Text(
+                      name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 7,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0F5886),
+                        height: 1.1,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
