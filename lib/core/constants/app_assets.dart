@@ -92,6 +92,9 @@ abstract final class AppAssets {
   static const String bannerSuperwin = 'assets/images/banner_juegos_superwin.png';
   static const String imagenSuperwin = 'assets/images/imagen_1_superwin.png';
 
+  // ── Paga Todo (HU-PAG001) ─────────────────────────────────────────────────
+  static const String bannerPagaTodo = 'assets/images/banner_paga_todo.png';
+
   // ── Chance Millonario (HU-CM001) ─────────────────────────────────────────
   // Mismo archivo que juegoImg9 — "Chance Millonario Sorprendente"
   static const String bannerChanceMillonario = 'assets/images/juego_9.png';

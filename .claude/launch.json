@@ -8,7 +8,7 @@
         "-c",
         "import os,http.server,functools; p=int(os.environ.get('PORT',8080)); http.server.HTTPServer(('',p),functools.partial(http.server.SimpleHTTPRequestHandler,directory='build/web')).serve_forever()"
       ],
-      "autoPort": true
+      "port": 8082
     }
   ]
 }
