@@ -25,7 +25,8 @@ extension _ModalidadX on _Modalidad {
   // Multiplicadores HU-PD-003: 1C=5x, 2C=50x, 3C=400x, 4C=4500x
   int get multiplier => const [5, 50, 400, 4500][index];
   String get cifraTag => const ['1C', '2C', '3C', '4C'][index];
-  String get label => const ['1 Cifra', '2 Cifras', '3 Cifras', '4 Cifras'][index];
+  String get label =>
+      const ['1 Cifra', '2 Cifras', '3 Cifras', '4 Cifras'][index];
 }
 
 class _BetLine {
@@ -48,20 +49,76 @@ class _BetLine {
 // Fila 2: Cundinamarca, Boyacá, Bogotá, Valle, Tolima, Huila, Santander
 
 const _kLoteriaData = <({String name, String asset, String label})>[
-  (name: 'Lotería del\nRisaralda',      asset: AppAssets.logoRisaralda,           label: 'Lotería del\nRisaralda'),
-  (name: 'Lotería del\nMeta',           asset: AppAssets.logoLoteriaMeta,         label: 'Lotería del\nMeta'),
-  (name: 'Lotería del\nQuindío',        asset: AppAssets.logoLoteriaQuindio,      label: 'Lotería del\nQuindío'),
-  (name: 'Lotería del\nCauca',          asset: AppAssets.logoLoteriaCauca,        label: 'Lotería del\nCauca'),
-  (name: 'Lotería de\nMedellín',        asset: AppAssets.logoLoteriaMedellin,     label: 'Lotería de\nMedellín'),
-  (name: 'Extra Lotería\nde Medellín',  asset: AppAssets.logoLoteriaExtraMedellin,label: 'Extra Lotería\nde Medellín'),
-  (name: 'Lotería de\nManizales',       asset: AppAssets.logoLoteriaManizales,    label: 'Lotería de\nManizales'),
-  (name: 'Lotería de\nCundinamarca',    asset: AppAssets.logoLoteriaCundinamarca, label: 'Lotería de\nCundinamarca'),
-  (name: 'Lotería de\nBoyacá',         asset: AppAssets.logoLoteriaBoyaca,       label: 'Lotería de\nBoyacá'),
-  (name: 'Lotería de\nBogotá',         asset: AppAssets.logoLoteriaBogota,       label: 'Lotería de\nBogotá'),
-  (name: 'Lotería del\nValle',          asset: AppAssets.logoValle,               label: 'Lotería del\nValle'),
-  (name: 'Lotería del\nTolima',         asset: AppAssets.logoLoteriaTolima,       label: 'Lotería del\nTolima'),
-  (name: 'Lotería del\nHuila',          asset: AppAssets.logoLoteriaHuila,        label: 'Lotería del\nHuila'),
-  (name: 'Lotería de\nSantander',       asset: AppAssets.logoLoteriaSantander,    label: 'Lotería de\nSantander'),
+  (
+    name: 'Lotería del\nRisaralda',
+    asset: AppAssets.logoRisaralda,
+    label: 'Lotería del\nRisaralda'
+  ),
+  (
+    name: 'Lotería del\nMeta',
+    asset: AppAssets.logoLoteriaMeta,
+    label: 'Lotería del\nMeta'
+  ),
+  (
+    name: 'Lotería del\nQuindío',
+    asset: AppAssets.logoLoteriaQuindio,
+    label: 'Lotería del\nQuindío'
+  ),
+  (
+    name: 'Lotería del\nCauca',
+    asset: AppAssets.logoLoteriaCauca,
+    label: 'Lotería del\nCauca'
+  ),
+  (
+    name: 'Lotería de\nMedellín',
+    asset: AppAssets.logoLoteriaMedellin,
+    label: 'Lotería de\nMedellín'
+  ),
+  (
+    name: 'Extra Lotería\nde Medellín',
+    asset: AppAssets.logoLoteriaExtraMedellin,
+    label: 'Extra Lotería\nde Medellín'
+  ),
+  (
+    name: 'Lotería de\nManizales',
+    asset: AppAssets.logoLoteriaManizales,
+    label: 'Lotería de\nManizales'
+  ),
+  (
+    name: 'Lotería de\nCundinamarca',
+    asset: AppAssets.logoLoteriaCundinamarca,
+    label: 'Lotería de\nCundinamarca'
+  ),
+  (
+    name: 'Lotería de\nBoyacá',
+    asset: AppAssets.logoLoteriaBoyaca,
+    label: 'Lotería de\nBoyacá'
+  ),
+  (
+    name: 'Lotería de\nBogotá',
+    asset: AppAssets.logoLoteriaBogota,
+    label: 'Lotería de\nBogotá'
+  ),
+  (
+    name: 'Lotería del\nValle',
+    asset: AppAssets.logoValle,
+    label: 'Lotería del\nValle'
+  ),
+  (
+    name: 'Lotería del\nTolima',
+    asset: AppAssets.logoLoteriaTolima,
+    label: 'Lotería del\nTolima'
+  ),
+  (
+    name: 'Lotería del\nHuila',
+    asset: AppAssets.logoLoteriaHuila,
+    label: 'Lotería del\nHuila'
+  ),
+  (
+    name: 'Lotería de\nSantander',
+    asset: AppAssets.logoLoteriaSantander,
+    label: 'Lotería de\nSantander'
+  ),
 ];
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -110,11 +167,29 @@ class _ChanceTradicionalScreenState extends State<ChanceTradicionalScreen> {
   }
 
   static const _dayNames = [
-    '', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo',
+    '',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+    'Domingo',
   ];
   static const _monthNames = [
-    '', 'ene', 'feb', 'mar', 'abr', 'mayo', 'jun',
-    'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+    '',
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'mayo',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
   ];
 
   void _autoNumero() {
@@ -132,8 +207,10 @@ class _ChanceTradicionalScreenState extends State<ChanceTradicionalScreen> {
   bool _validate() {
     final n = _numeroCtrl.text.trim();
     if (n.isEmpty || n.length != _modalidad.digits) {
-      setState(() =>
-          _fieldError = 'El número debe tener exactamente ${_modalidad.digits} cifras',);
+      setState(
+        () => _fieldError =
+            'El número debe tener exactamente ${_modalidad.digits} cifras',
+      );
       return false;
     }
     if (_montoValue < 3000) {
@@ -162,8 +239,9 @@ class _ChanceTradicionalScreenState extends State<ChanceTradicionalScreen> {
 
   int get _totalMonto => _lines.fold(0, (s, l) => s + l.monto);
   int get _totalIva => _lines.fold(0, (s, l) => s + l.iva);
-  int get _maxPrize =>
-      _lines.isEmpty ? 0 : _lines.map((l) => l.prize).reduce((a, b) => a > b ? a : b);
+  int get _maxPrize => _lines.isEmpty
+      ? 0
+      : _lines.map((l) => l.prize).reduce((a, b) => a > b ? a : b);
 
   static String _fmt(int amount) {
     if (amount == 0) return '\$0';
@@ -244,8 +322,7 @@ class _ChanceTradicionalScreenState extends State<ChanceTradicionalScreen> {
       barrierColor: Colors.black.withValues(alpha: 0.6),
       builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding:
-            const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: SingleChildScrollView(
           child: LoginFormWidget(
             onClose: () => Navigator.pop(dialogContext),
@@ -608,8 +685,7 @@ class _ChanceTradicionalScreenState extends State<ChanceTradicionalScreen> {
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF9CA3AF),
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -808,8 +884,7 @@ class _ChanceTradicionalScreenState extends State<ChanceTradicionalScreen> {
                 if (_lines.isEmpty)
                   _buildEmptyLine()
                 else
-                  for (int i = 0; i < _lines.length; i++)
-                    _buildBetLineRow(i),
+                  for (int i = 0; i < _lines.length; i++) _buildBetLineRow(i),
 
                 const SizedBox(height: 8),
 
@@ -851,9 +926,8 @@ class _ChanceTradicionalScreenState extends State<ChanceTradicionalScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
-          color: _fieldError != null
-              ? AppColors.error
-              : const Color(0xFFD1D5DB),
+          color:
+              _fieldError != null ? AppColors.error : const Color(0xFFD1D5DB),
         ),
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [
@@ -1252,9 +1326,7 @@ class _DayChip extends StatelessWidget {
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: isSelected
-                    ? const Color(0xFF1372AE)
-                    : Colors.white,
+                color: isSelected ? const Color(0xFF1372AE) : Colors.white,
                 height: 24 / 12,
               ),
             ),
@@ -1265,9 +1337,7 @@ class _DayChip extends StatelessWidget {
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.24,
-                color: isSelected
-                    ? const Color(0xFF1372AE)
-                    : Colors.white,
+                color: isSelected ? const Color(0xFF1372AE) : Colors.white,
                 height: 24 / 24,
               ),
             ),
@@ -1278,9 +1348,7 @@ class _DayChip extends StatelessWidget {
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
                 letterSpacing: -0.1,
-                color: isSelected
-                    ? const Color(0xFF1372AE)
-                    : Colors.white,
+                color: isSelected ? const Color(0xFF1372AE) : Colors.white,
                 height: 17 / 10,
               ),
             ),
@@ -1414,9 +1482,8 @@ class _LoteriaCell extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected
-                ? const Color(0xFFFFCC00)
-                : const Color(0xFFE5E7EB),
+            color:
+                isSelected ? const Color(0xFFFFCC00) : const Color(0xFFE5E7EB),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
@@ -1491,9 +1558,8 @@ class _DisplayCell extends StatelessWidget {
             : Colors.white,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: isHighlight
-              ? const Color(0xFFFFCC00)
-              : const Color(0xFFD1D5DB),
+          color:
+              isHighlight ? const Color(0xFFFFCC00) : const Color(0xFFD1D5DB),
         ),
       ),
       child: Text(

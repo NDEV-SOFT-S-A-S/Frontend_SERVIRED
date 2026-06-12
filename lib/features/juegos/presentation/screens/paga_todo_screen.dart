@@ -35,20 +35,23 @@ const _kValoresHabilitados = <int>[2500, 3000, 4000, 5000];
 // Fila 2: Cundinamarca, Boyacá, Bogotá, Valle, Tolima, Huila, Santander
 
 const _kLoteriaData = <({String name, String asset})>[
-  (name: 'Lotería del\nRisaralda',     asset: AppAssets.logoRisaralda),
-  (name: 'Lotería del\nMeta',          asset: AppAssets.logoLoteriaMeta),
-  (name: 'Lotería del\nQuindío',       asset: AppAssets.logoLoteriaQuindio),
-  (name: 'Lotería del\nCauca',         asset: AppAssets.logoLoteriaCauca),
-  (name: 'Lotería de\nMedellín',       asset: AppAssets.logoLoteriaMedellin),
-  (name: 'Extra Lotería\nde Medellín', asset: AppAssets.logoLoteriaExtraMedellin),
-  (name: 'Lotería de\nManizales',      asset: AppAssets.logoLoteriaManizales),
-  (name: 'Lotería de\nCundinamarca',   asset: AppAssets.logoLoteriaCundinamarca),
-  (name: 'Lotería de\nBoyacá',         asset: AppAssets.logoLoteriaBoyaca),
-  (name: 'Lotería de\nBogotá',         asset: AppAssets.logoLoteriaBogota),
-  (name: 'Lotería del\nValle',         asset: AppAssets.logoValle),
-  (name: 'Lotería del\nTolima',        asset: AppAssets.logoLoteriaTolima),
-  (name: 'Lotería del\nHuila',         asset: AppAssets.logoLoteriaHuila),
-  (name: 'Lotería de\nSantander',      asset: AppAssets.logoLoteriaSantander),
+  (name: 'Lotería del\nRisaralda', asset: AppAssets.logoRisaralda),
+  (name: 'Lotería del\nMeta', asset: AppAssets.logoLoteriaMeta),
+  (name: 'Lotería del\nQuindío', asset: AppAssets.logoLoteriaQuindio),
+  (name: 'Lotería del\nCauca', asset: AppAssets.logoLoteriaCauca),
+  (name: 'Lotería de\nMedellín', asset: AppAssets.logoLoteriaMedellin),
+  (
+    name: 'Extra Lotería\nde Medellín',
+    asset: AppAssets.logoLoteriaExtraMedellin
+  ),
+  (name: 'Lotería de\nManizales', asset: AppAssets.logoLoteriaManizales),
+  (name: 'Lotería de\nCundinamarca', asset: AppAssets.logoLoteriaCundinamarca),
+  (name: 'Lotería de\nBoyacá', asset: AppAssets.logoLoteriaBoyaca),
+  (name: 'Lotería de\nBogotá', asset: AppAssets.logoLoteriaBogota),
+  (name: 'Lotería del\nValle', asset: AppAssets.logoValle),
+  (name: 'Lotería del\nTolima', asset: AppAssets.logoLoteriaTolima),
+  (name: 'Lotería del\nHuila', asset: AppAssets.logoLoteriaHuila),
+  (name: 'Lotería de\nSantander', asset: AppAssets.logoLoteriaSantander),
 ];
 
 class _BetLine {
@@ -101,8 +104,8 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
   bool _validate() {
     final n = _numeroCtrl.text.trim();
     if (n.isEmpty || n.length != _modalidad.digits) {
-      setState(() =>
-          _fieldError = 'El número debe tener exactamente ${_modalidad.digits} cifras');
+      setState(() => _fieldError =
+          'El número debe tener exactamente ${_modalidad.digits} cifras');
       return false;
     }
     if (_selectedValor == null) {
@@ -247,8 +250,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
       barrierColor: Colors.black.withValues(alpha: 0.6),
       builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding:
-            const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: SingleChildScrollView(
           child: LoginFormWidget(
             onClose: () => Navigator.pop(dialogContext),
@@ -407,7 +409,6 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
         children: [
           _buildBanner(),
           const SizedBox(height: 16),
-
           Center(
             child: Text(
               'Sigue los pasos para realizar tu apuesta',
@@ -421,13 +422,10 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
           _buildStep1(isDesktop),
           const SizedBox(height: 16),
-
           _buildStep2(),
           const SizedBox(height: 16),
-
           _buildStep3(),
         ],
       ),
@@ -630,9 +628,8 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
               ),
               const SizedBox(width: 8),
               ...List.generate(_modalidad.digits, (i) {
-                final digit = _numeroCtrl.text.length > i
-                    ? _numeroCtrl.text[i]
-                    : '?';
+                final digit =
+                    _numeroCtrl.text.length > i ? _numeroCtrl.text[i] : '?';
                 return Container(
                   width: 32,
                   height: 29,
@@ -832,9 +829,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
   // ── Right card ─────────────────────────────────────────────────────────────
 
   Widget _buildRightCard(bool isDesktop) {
-    final showPrize = _lines.isNotEmpty
-        ? _maxPrizeDisplay
-        : _previewPrize;
+    final showPrize = _lines.isNotEmpty ? _maxPrizeDisplay : _previewPrize;
 
     return Container(
       width: double.infinity,
@@ -907,27 +902,19 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-
                 if (_lines.isEmpty)
                   _buildEmptyLine()
                 else
-                  for (int i = 0; i < _lines.length; i++)
-                    _buildBetLineRow(i),
-
+                  for (int i = 0; i < _lines.length; i++) _buildBetLineRow(i),
                 const SizedBox(height: 8),
-
                 _buildSummaryRow('IVA', _fmt(_totalIva)),
                 _buildSummaryRow('Valor apuesta', _fmt(_totalValor)),
-
                 const SizedBox(height: 16),
-
                 if (_confirmed)
                   _buildConfirmSuccess()
                 else
                   _buildConfirmButton(),
-
                 const SizedBox(height: 20),
-
                 Center(
                   child: Text(
                     'Podrías ganar hasta',
@@ -940,7 +927,6 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
                 _buildPrizeButton(showPrize),
               ],
             ),
@@ -979,8 +965,7 @@ class _PagaTodoScreenState extends State<PagaTodoScreen> {
                 color: Colors.black,
               ),
               children: [
-                TextSpan(
-                    text: '${_modalidad.cifraTag} '),
+                TextSpan(text: '${_modalidad.cifraTag} '),
                 const TextSpan(
                   text: '????',
                   style: TextStyle(color: Color(0xFFFFCC00)),
@@ -1260,9 +1245,7 @@ class _ModalidadBtn extends StatelessWidget {
         width: 144,
         height: 36,
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFFFFCC00)
-              : const Color(0xFF4B5563),
+          color: isSelected ? const Color(0xFFFFCC00) : const Color(0xFF4B5563),
           borderRadius: BorderRadius.circular(14),
         ),
         alignment: Alignment.center,
@@ -1299,7 +1282,8 @@ class _AutomaticoBtn extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF1372AE)),
+            const Icon(Icons.refresh_rounded,
+                size: 18, color: Color(0xFF1372AE)),
             const SizedBox(width: 6),
             Text(
               'Automático',
@@ -1342,9 +1326,8 @@ class _LoteriaCard extends StatelessWidget {
               : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected
-                ? const Color(0xFFFFCC00)
-                : const Color(0xFFE5E7EB),
+            color:
+                isSelected ? const Color(0xFFFFCC00) : const Color(0xFFE5E7EB),
             width: isSelected ? 2 : 1,
           ),
         ),

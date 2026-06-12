@@ -93,8 +93,10 @@ abstract final class AppAssets {
   static const String imagenSuperwin = 'assets/images/imagen_1_superwin.png';
 
   // ── Chance Millonario (HU-CM001) ─────────────────────────────────────────
-  // Mismo archivo que juegoImg9 — "Chance Millonario Sorprendente"
-  static const String bannerChanceMillonario = 'assets/images/juego_9.png';
+  // Banner oficial "Chance Millonario ¡Sorprendente!" (Figma 1095:16829).
+  // El nombre del archivo en assets tiene el typo "milloonarioa".
+  static const String bannerChanceMillonario =
+      'assets/images/banner_chance_milloonarioa.png';
 
   // ── Pata Millonaria ───────────────────────────────────────────────────────
   static const String bannerPataMillonaria = 'assets/images/banner-paramillonaria.png';

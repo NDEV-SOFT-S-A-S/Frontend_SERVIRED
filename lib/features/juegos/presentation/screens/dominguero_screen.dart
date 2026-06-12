@@ -79,13 +79,30 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
   bool get _isSundayClosed => DateTime.now().weekday == DateTime.sunday;
 
   static String _fmtSunday(DateTime d) {
-    const ms = ['', 'ene', 'feb', 'mar', 'abr', 'mayo', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const ms = [
+      '',
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'mayo',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic'
+    ];
     return '${d.day} ${ms[d.month]}';
   }
 
   void _autoNumero() {
     final max = _modalidad.digits == 3 ? 999 : 9999;
-    _numeroCtrl.text = math.Random().nextInt(max + 1).toString().padLeft(_modalidad.digits, '0');
+    _numeroCtrl.text = math.Random()
+        .nextInt(max + 1)
+        .toString()
+        .padLeft(_modalidad.digits, '0');
     setState(() => _fieldError = null);
   }
 
@@ -93,7 +110,8 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
     final n = _numeroCtrl.text.trim();
     final d = _modalidad.digits;
     if (n.isEmpty || n.length != d) {
-      setState(() => _fieldError = 'El número debe tener exactamente $d cifras');
+      setState(
+          () => _fieldError = 'El número debe tener exactamente $d cifras');
       return false;
     }
     setState(() => _fieldError = null);
@@ -103,7 +121,8 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
   void _addLine() {
     if (!_validate()) return;
     setState(() {
-      _lines.add(_BetLine(modalidad: _modalidad, numero: _numeroCtrl.text.trim()));
+      _lines.add(
+          _BetLine(modalidad: _modalidad, numero: _numeroCtrl.text.trim()));
       _numeroCtrl.clear();
     });
   }
@@ -134,7 +153,8 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthCubit, AuthState>(
-      buildWhen: (p, c) => (p.user == null) != (c.user == null) || p.status != c.status,
+      buildWhen: (p, c) =>
+          (p.user == null) != (c.user == null) || p.status != c.status,
       builder: (context, authState) {
         final loggedIn = authState.user != null ||
             authState.status == AuthStatus.success ||
@@ -161,7 +181,9 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
                 ),
               ),
               Positioned(
-                top: 0, left: 0, right: 0,
+                top: 0,
+                left: 0,
+                right: 0,
                 child: NavbarWidget(
                   isLoggedIn: loggedIn,
                   activeNavItem: 'Juegos',
@@ -219,31 +241,51 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
         child: Container(
           constraints: const BoxConstraints(maxWidth: 600),
           padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+          decoration: BoxDecoration(
+              color: Colors.white, borderRadius: BorderRadius.circular(24)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(AppAssets.juegoImg2, height: 120, fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.lock_outline_rounded, size: 80, color: Color(0xFF2C2E6F))),
+              Image.asset(AppAssets.juegoImg2,
+                  height: 120,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 80,
+                      color: Color(0xFF2C2E6F))),
               const SizedBox(height: 20),
               Text('Inicia sesión para jugar',
-                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF2C2E6F), height: 1.3),
+                  style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF2C2E6F),
+                      height: 1.3),
                   textAlign: TextAlign.center),
               const SizedBox(height: 12),
-              Text('Debes estar autenticado para realizar apuestas en El Dominguero Millonario.',
-                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: const Color(0xFF4B5563), height: 1.5),
+              Text(
+                  'Debes estar autenticado para realizar apuestas en El Dominguero Millonario.',
+                  style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF4B5563),
+                      height: 1.5),
                   textAlign: TextAlign.center),
               const SizedBox(height: 24),
               SizedBox(
-                width: 220, height: 48,
+                width: 220,
+                height: 48,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1372AE),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24)),
                   ),
                   onPressed: () => _showLoginModal(ctx),
                   child: Text('Iniciar sesión',
-                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                      style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white)),
                 ),
               ),
             ],
@@ -257,8 +299,21 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
 
   Widget _buildSundayClosedBanner() {
     final nextMonday = DateTime.now().add(const Duration(days: 1));
-    const ms = ['', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const ms = [
+      '',
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre'
+    ];
     final nextOpenLabel = '${nextMonday.day} de ${ms[nextMonday.month]}';
 
     return Center(
@@ -267,31 +322,49 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
         child: Container(
           constraints: const BoxConstraints(maxWidth: 600),
           padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+          decoration: BoxDecoration(
+              color: Colors.white, borderRadius: BorderRadius.circular(24)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(AppAssets.juegoImg2, height: 120, fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports, size: 80, color: Color(0xFF2C2E6F))),
+              Image.asset(AppAssets.juegoImg2,
+                  height: 120,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports,
+                      size: 80, color: Color(0xFF2C2E6F))),
               const SizedBox(height: 20),
               Text('El Dominguero no está disponible en este momento',
-                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF2C2E6F), height: 1.3),
+                  style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF2C2E6F),
+                      height: 1.3),
                   textAlign: TextAlign.center),
               const SizedBox(height: 12),
-              Text('Los domingos son día de sorteo. La venta abre nuevamente el lunes $nextOpenLabel.',
-                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400, color: const Color(0xFF4B5563), height: 1.5),
+              Text(
+                  'Los domingos son día de sorteo. La venta abre nuevamente el lunes $nextOpenLabel.',
+                  style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF4B5563),
+                      height: 1.5),
                   textAlign: TextAlign.center),
               const SizedBox(height: 24),
               SizedBox(
-                width: 200, height: 48,
+                width: 200,
+                height: 48,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.secondary500,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24)),
                   ),
                   onPressed: () => context.go(AppRoutes.juegos),
                   child: Text('Ver otros juegos',
-                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                      style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white)),
                 ),
               ),
             ],
@@ -401,12 +474,20 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: RichText(
               text: TextSpan(
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: const Color(0xFF4B5563)),
+                style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF4B5563)),
                 children: [
-                  const TextSpan(text: '1.  Selecciona un día a jugar, juega con el sorteo de los resultados de '),
+                  const TextSpan(
+                      text:
+                          '1.  Selecciona un día a jugar, juega con el sorteo de los resultados de '),
                   TextSpan(
                     text: 'Chontico Noche (domingos)',
-                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF0F5886)),
+                    style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0F5886)),
                   ),
                 ],
               ),
@@ -438,7 +519,10 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
               '2.  Escoge la cantidad de cifras',
-              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: const Color(0xFF4B5563)),
+              style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF4B5563)),
             ),
           ),
           const SizedBox(height: 16),
@@ -469,11 +553,15 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
           errorBuilder: (_, __, ___) => Container(
             height: 150,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF1B5E20), Color(0xFFF9A825)]),
+              gradient: LinearGradient(
+                  colors: [Color(0xFF1B5E20), Color(0xFFF9A825)]),
             ),
             alignment: Alignment.center,
             child: Text('El Dominguero\nMILLONARIO',
-                style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white),
+                style: GoogleFonts.inter(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white),
                 textAlign: TextAlign.center),
           ),
         ),
@@ -486,10 +574,10 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
   // Mobile:  Column
   Widget _buildStep2InputBlock(bool isDesktop) {
     void onSelect(_Modalidad m) => setState(() {
-      _modalidad = m;
-      _fieldError = null;
-      _numeroCtrl.clear();
-    });
+          _modalidad = m;
+          _fieldError = null;
+          _numeroCtrl.clear();
+        });
 
     if (isDesktop) {
       return Row(
@@ -523,7 +611,11 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
         // Figma: "Ingresa tu número" Poppins SemiBold 14px
         Text(
           'Ingresa tu número',
-          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF4B5563), height: 24 / 14),
+          style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF4B5563),
+              height: 24 / 14),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 10),
@@ -533,9 +625,15 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
           height: 45,
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border.all(color: _fieldError != null ? AppColors.error : const Color(0xFFD1D5DB)),
+            border: Border.all(
+                color: _fieldError != null
+                    ? AppColors.error
+                    : const Color(0xFFD1D5DB)),
             borderRadius: BorderRadius.circular(14),
-            boxShadow: const [BoxShadow(color: Color(0x40000000), offset: Offset(1, 2), blurRadius: 4)],
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0x40000000), offset: Offset(1, 2), blurRadius: 4)
+            ],
           ),
           child: TextField(
             controller: _numeroCtrl,
@@ -543,12 +641,18 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
             textAlign: TextAlign.center,
             maxLength: _modalidad.digits,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF4B5563)),
+            style: GoogleFonts.inter(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF4B5563)),
             decoration: InputDecoration(
               counterText: '',
               border: InputBorder.none,
               hintText: '?',
-              hintStyle: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF4B5563)),
+              hintStyle: GoogleFonts.inter(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF4B5563)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             ),
             onChanged: (_) => setState(() => _fieldError = null),
@@ -557,7 +661,9 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
 
         if (_fieldError != null) ...[
           const SizedBox(height: 4),
-          Text(_fieldError!, style: GoogleFonts.inter(fontSize: 12, color: AppColors.error), textAlign: TextAlign.center),
+          Text(_fieldError!,
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.error),
+              textAlign: TextAlign.center),
         ],
         const SizedBox(height: 10),
 
@@ -568,12 +674,18 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFFF0F0F0),
             borderRadius: BorderRadius.circular(8),
-            boxShadow: const [BoxShadow(color: Color(0x40000000), offset: Offset(0, 4), blurRadius: 2)],
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0x40000000), offset: Offset(0, 4), blurRadius: 2)
+            ],
           ),
           alignment: Alignment.center,
           child: Text(
             _modalidad.cifraTag,
-            style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF4B5563)),
+            style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF4B5563)),
           ),
         ),
         const SizedBox(height: 10),
@@ -585,15 +697,21 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
             width: 223,
             height: 24,
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(color: const Color(0xFFFECA0C), borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(
+                color: const Color(0xFFFECA0C),
+                borderRadius: BorderRadius.circular(4)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.add_circle_outline, size: 16, color: Color(0xFF1372AE)),
+                const Icon(Icons.add_circle_outline,
+                    size: 16, color: Color(0xFF1372AE)),
                 const SizedBox(width: 5),
                 Text(
                   'Agregar otra línea de apuesta',
-                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1372AE)),
+                  style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1372AE)),
                 ),
               ],
             ),
@@ -611,7 +729,8 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20), // Figma: p-[20px]
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+      decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(30)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
@@ -619,7 +738,11 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
           // Título — Figma: Inter Bold 22px #2C2E6F centrado
           Text(
             'Así va tu juego',
-            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF2C2E6F), height: 28 / 22),
+            style: GoogleFonts.inter(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF2C2E6F),
+                height: 28 / 22),
           ),
           const SizedBox(height: 16),
 
@@ -632,9 +755,13 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
               children: [
                 // Header "Tu apuesta"
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   child: Text('Tu apuesta',
-                      style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF4B5563))),
+                      style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF4B5563))),
                 ),
 
                 // Líneas
@@ -652,14 +779,21 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
                 const SizedBox(height: 16),
 
                 // Confirmar y pagar — Figma: 371×57px rounded-[26px] verde
-                if (_confirmed) _buildConfirmSuccess() else _buildConfirmButton(),
+                if (_confirmed)
+                  _buildConfirmSuccess()
+                else
+                  _buildConfirmButton(),
 
                 const SizedBox(height: 16),
 
                 // "Podrías ganar hasta" — Figma: Inter Bold 22px #1372AE
                 Text(
                   'Podrías ganar hasta',
-                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF1372AE), height: 28 / 22),
+                  style: GoogleFonts.inter(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1372AE),
+                      height: 28 / 22),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
@@ -687,9 +821,21 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('Línea 1', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1372AE))),
-          Text('?c  ?', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
-          Text('\$2.000', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
+          Text('Línea 1',
+              style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1372AE))),
+          Text('?c  ?',
+              style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black)),
+          Text('\$2.000',
+              style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black)),
         ],
       ),
     );
@@ -712,23 +858,36 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text('Línea ${i + 1}',
-              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1372AE))),
+              style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1372AE))),
           RichText(
             text: TextSpan(
-              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black),
+              style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black),
               children: [
                 TextSpan(text: '${line.modalidad.cifraTag}  '),
-                TextSpan(text: line.numero, style: const TextStyle(color: Color(0xFFFFCC00))),
+                TextSpan(
+                    text: line.numero,
+                    style: const TextStyle(color: Color(0xFFFFCC00))),
               ],
             ),
           ),
           Row(
             children: [
-              Text('\$2.000', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
+              Text('\$2.000',
+                  style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black)),
               const SizedBox(width: 6),
               GestureDetector(
                 onTap: () => _removeLine(i),
-                child: const Icon(Icons.close, size: 16, color: Color(0xFF4B5563)),
+                child:
+                    const Icon(Icons.close, size: 16, color: Color(0xFF4B5563)),
               ),
             ],
           ),
@@ -743,9 +902,17 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF4B5563))),
+          Text(label,
+              style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF4B5563))),
           const SizedBox(width: 18),
-          Text(value, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
+          Text(value,
+              style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black)),
         ],
       ),
     );
@@ -762,15 +929,19 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
           height: 57,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: hasLines ? const Color(0xFF43B75D) : const Color(0xFFD1D5DB),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+              backgroundColor:
+                  hasLines ? const Color(0xFF43B75D) : const Color(0xFFD1D5DB),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26)),
               elevation: 0,
             ),
-            onPressed: hasLines ? () => setState(() => _confirmed = true) : null,
+            onPressed:
+                hasLines ? () => setState(() => _confirmed = true) : null,
             child: Text(
               'Confirmar y pagar',
               style: GoogleFonts.inter(
-                fontSize: 20, fontWeight: FontWeight.w600,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
                 color: hasLines ? Colors.white : const Color(0xFF9CA3AF),
               ),
             ),
@@ -794,17 +965,29 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
           const Icon(Icons.check_circle, color: Color(0xFF43B75D), size: 32),
           const SizedBox(height: 8),
           Text('¡Apuesta registrada exitosamente!',
-              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF1B5E20)),
+              style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1B5E20)),
               textAlign: TextAlign.center),
           const SizedBox(height: 4),
-          Text('Sorteo: Chontico Noche · ${_fmtSunday(_sundays[_selectedSunday])}',
-              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF2E7D32)),
+          Text(
+              'Sorteo: Chontico Noche · ${_fmtSunday(_sundays[_selectedSunday])}',
+              style: GoogleFonts.inter(
+                  fontSize: 13, color: const Color(0xFF2E7D32)),
               textAlign: TextAlign.center),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () => setState(() { _confirmed = false; _lines.clear(); _selectedSunday = 0; }),
+            onPressed: () => setState(() {
+              _confirmed = false;
+              _lines.clear();
+              _selectedSunday = 0;
+            }),
             child: Text('Realizar otra apuesta',
-                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.secondary500)),
+                style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.secondary500)),
           ),
         ],
       ),
@@ -817,15 +1000,22 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
     return Container(
       width: double.infinity,
       height: 80,
-      decoration: BoxDecoration(color: const Color(0xFF1450EF), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+          color: const Color(0xFF1450EF),
+          borderRadius: BorderRadius.circular(16)),
       alignment: Alignment.center,
       child: Text(
         _maxPrize == 0 ? '\$ 0' : _fmt(_maxPrize),
         style: GoogleFonts.inter(
-          fontSize: 40, fontWeight: FontWeight.w700, color: const Color(0xFFFFE30C),
+          fontSize: 40,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFFFFE30C),
           shadows: const [
             Shadow(color: Color(0xFFCEFFD8), blurRadius: 4),
-            Shadow(color: Color(0xFFFFCC00), offset: Offset(0, -3), blurRadius: 20),
+            Shadow(
+                color: Color(0xFFFFCC00),
+                offset: Offset(0, -3),
+                blurRadius: 20),
           ],
         ),
       ),
@@ -837,7 +1027,11 @@ class _DomingueroScreenState extends State<DomingueroScreen> {
 
 // Figma: chip 122×65px rounded-[16px], fuentes Inter Bold
 class _DateChip extends StatelessWidget {
-  const _DateChip({required this.date, required this.dayLabel, required this.isSelected, required this.onTap});
+  const _DateChip(
+      {required this.date,
+      required this.dayLabel,
+      required this.isSelected,
+      required this.onTap});
 
   final String date;
   final String dayLabel;
@@ -856,19 +1050,41 @@ class _DateChip extends StatelessWidget {
           color: isSelected ? const Color(0xFFFFCC00) : const Color(0xFF4B5563),
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [
-            BoxShadow(color: Color(0x1F131927), offset: Offset(0, 2), blurRadius: 4, spreadRadius: -2),
-            BoxShadow(color: Color(0x14131927), offset: Offset(0, 4), blurRadius: 4, spreadRadius: -2),
+            BoxShadow(
+                color: Color(0x1F131927),
+                offset: Offset(0, 2),
+                blurRadius: 4,
+                spreadRadius: -2),
+            BoxShadow(
+                color: Color(0x14131927),
+                offset: Offset(0, 4),
+                blurRadius: 4,
+                spreadRadius: -2),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text('Sorteo',
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: color, height: 24 / 12)),
+                style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                    height: 24 / 12)),
             Text(date,
-                style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: color, letterSpacing: -0.24, height: 1.0)),
+                style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                    letterSpacing: -0.24,
+                    height: 1.0)),
             Text(dayLabel,
-                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w500, color: color, letterSpacing: -0.1, height: 17 / 10)),
+                style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: color,
+                    letterSpacing: -0.1,
+                    height: 17 / 10)),
           ],
         ),
       ),
@@ -888,16 +1104,23 @@ class _ModalidadButtons extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _ModalidadBtn(label: '3 Cifras', isSelected: selected == _Modalidad.tresC, onTap: () => onSelect(_Modalidad.tresC)),
+        _ModalidadBtn(
+            label: '3 Cifras',
+            isSelected: selected == _Modalidad.tresC,
+            onTap: () => onSelect(_Modalidad.tresC)),
         const SizedBox(height: 10),
-        _ModalidadBtn(label: '4 Cifras', isSelected: selected == _Modalidad.cuatroC, onTap: () => onSelect(_Modalidad.cuatroC)),
+        _ModalidadBtn(
+            label: '4 Cifras',
+            isSelected: selected == _Modalidad.cuatroC,
+            onTap: () => onSelect(_Modalidad.cuatroC)),
       ],
     );
   }
 }
 
 class _ModalidadBtn extends StatelessWidget {
-  const _ModalidadBtn({required this.label, required this.isSelected, required this.onTap});
+  const _ModalidadBtn(
+      {required this.label, required this.isSelected, required this.onTap});
 
   final String label;
   final bool isSelected;
@@ -908,8 +1131,8 @@ class _ModalidadBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 144,  // Figma: w-[144px]
-        height: 36,  // Figma: h-[36px]
+        width: 144, // Figma: w-[144px]
+        height: 36, // Figma: h-[36px]
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF1372AE) : const Color(0xFF4B5563),
           borderRadius: BorderRadius.circular(14), // Figma: rounded-[14px]
@@ -917,7 +1140,11 @@ class _ModalidadBtn extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           label,
-          style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white, height: 24 / 20),
+          style: GoogleFonts.inter(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              height: 24 / 20),
         ),
       ),
     );
@@ -936,15 +1163,23 @@ class _AutomaticoBtn extends StatelessWidget {
       child: Container(
         height: 22,
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(color: const Color(0xFFFECA0C), borderRadius: BorderRadius.circular(4)),
+        decoration: BoxDecoration(
+            color: const Color(0xFFFECA0C),
+            borderRadius: BorderRadius.circular(4)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SvgPicture.asset(AppAssets.refreshCircular, width: 14, height: 14,
-                colorFilter: const ColorFilter.mode(Color(0xFF1372AE), BlendMode.srcIn)),
+            SvgPicture.asset(AppAssets.refreshCircular,
+                width: 14,
+                height: 14,
+                colorFilter:
+                    const ColorFilter.mode(Color(0xFF1372AE), BlendMode.srcIn)),
             const SizedBox(width: 5),
             Text('Automático',
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1372AE))),
+                style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1372AE))),
           ],
         ),
       ),

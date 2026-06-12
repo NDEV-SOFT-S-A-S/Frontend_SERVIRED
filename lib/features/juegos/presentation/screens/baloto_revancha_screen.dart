@@ -255,7 +255,10 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
 
     // Rotar números aleatorios cada 60ms
     _timerRuleta = Timer.periodic(const Duration(milliseconds: 60), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       setState(() {
         for (int i = 0; i < 6; i++) {
           if (!_balotasDetenidas[i]) {
@@ -274,8 +277,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
         if (!mounted) return;
         setState(() {
           _balotasDetenidas[idx] = true;
-          _numerosVisibles[idx] =
-              idx < 5 ? finalesBalotas[idx] : finalSuper;
+          _numerosVisibles[idx] = idx < 5 ? finalesBalotas[idx] : finalSuper;
         });
         // Cuando la última bola se detiene, guardar resultado
         if (idx == 5) {
@@ -336,14 +338,17 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             superbalota: l.superbalota,
             conRevancha: _conRevancha,
             cantidadSorteos: _cantidadSorteos,
-            precioTotal: (_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)) * _cantidadSorteos,
+            precioTotal:
+                (_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)) *
+                    _cantidadSorteos,
           )),
       CarritoItem(
         balotas: _balotas.toList()..sort(),
         superbalota: _superbalota!,
         conRevancha: _conRevancha,
         cantidadSorteos: _cantidadSorteos,
-        precioTotal: (_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)) * _cantidadSorteos,
+        precioTotal: (_kPrecioBaloto + (_conRevancha ? _kPrecioRevancha : 0)) *
+            _cantidadSorteos,
       ),
     ];
     context.push(AppRoutes.carrito, extra: todasLasLineas);
@@ -1026,8 +1031,8 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             Expanded(flex: 54, child: _buildBalotasGrid()),
             const Padding(
               padding: EdgeInsets.only(top: 36, left: 4, right: 4),
-              child: Icon(Icons.chevron_right,
-                  color: Color(0xFF0C2577), size: 28),
+              child:
+                  Icon(Icons.chevron_right, color: Color(0xFF0C2577), size: 28),
             ),
             Expanded(flex: 44, child: _buildSuperbalotaGrid()),
           ],
@@ -1192,15 +1197,15 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
 
     if (_animandoBalotera) {
       displayBalotas = _numerosVisibles.sublist(0, 5);
-      displaySuper   = _numerosVisibles[5];
-      detenidas      = _balotasDetenidas;
+      displaySuper = _numerosVisibles[5];
+      detenidas = _balotasDetenidas;
     } else {
       final sorted = _balotas.isEmpty
           ? List.filled(_kBalotasRequeridas, 0)
           : (_balotas.toList()..sort());
       displayBalotas = sorted;
-      displaySuper   = _superbalota ?? 0;
-      detenidas      = List.filled(6, !_balotas.isEmpty);
+      displaySuper = _superbalota ?? 0;
+      detenidas = List.filled(6, !_balotas.isEmpty);
     }
 
     // Tubo responsivo: LayoutBuilder externo captura el ancho REAL disponible
@@ -1224,19 +1229,19 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
             // Figma: tapas ~19.4% c/lado → área de vidrio ~61.2% del ancho total.
             // Se usa 0.58 para dejar ~2% de margen en cada extremo y evitar
             // que la primera y última balota queden detrás de los conectores.
-            final innerW  = tubeW * 0.58;
-            const nBalls  = 6;
-            const nGaps   = nBalls - 1;
+            final innerW = tubeW * 0.58;
+            const nBalls = 6;
+            const nGaps = nBalls - 1;
             // Gap entre bolas: 1% del ancho del tubo (escala con él)
-            final gap     = tubeW * 0.010;
+            final gap = tubeW * 0.010;
             // Bola por ancho disponible
-            final byW     = (innerW - nGaps * gap) / nBalls;
+            final byW = (innerW - nGaps * gap) / nBalls;
             // Bola por alto disponible (margen 18% arriba/abajo)
-            final byH     = tubeH * 0.82;
+            final byH = tubeH * 0.82;
             // Tamaño final: el menor de los dos límites
-            final ballSz  = math.min(byW, byH).clamp(12.0, 72.0);
-            final fontSz  = (ballSz * 0.40).clamp(7.0, 24.0);
-            final rowW    = ballSz * nBalls + nGaps * gap;
+            final ballSz = math.min(byW, byH).clamp(12.0, 72.0);
+            final fontSz = (ballSz * 0.40).clamp(7.0, 24.0);
+            final rowW = ballSz * nBalls + nGaps * gap;
 
             return SizedBox(
               width: tubeW,
@@ -1257,8 +1262,9 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        ...List.generate(_kBalotasRequeridas, (i) =>
-                          _BalotaCircle(
+                        ...List.generate(
+                          _kBalotasRequeridas,
+                          (i) => _BalotaCircle(
                             numero: displayBalotas[i],
                             isSuper: false,
                             detenida: detenidas[i],
@@ -1286,7 +1292,6 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
   }
 
   // ── Números mostrados ─────────────────────────────────────────────────────
-
 
   Widget _buildNumerosMostrados() {
     final balotasSorted = _balotas.toList()..sort();
@@ -1331,11 +1336,11 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     required bool isEditing,
     bool isMobile = false,
   }) {
-    final double containerH  = isMobile ? 52 : 66;
+    final double containerH = isMobile ? 52 : 66;
     final double labelFontSz = isMobile ? 12 : 16;
-    final double btnSize     = isMobile ? 26 : 38;
-    final double iconSz      = isMobile ? 14 : 18;
-    final EdgeInsets pad     = isMobile
+    final double btnSize = isMobile ? 26 : 38;
+    final double iconSz = isMobile ? 14 : 18;
+    final EdgeInsets pad = isMobile
         ? const EdgeInsets.only(left: 10, right: 8, top: 0, bottom: 0)
         : const EdgeInsets.only(left: 20, right: 14, top: 10, bottom: 10);
 
@@ -1344,32 +1349,31 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
     // Aunque BR o addBtn no se muestren, el espacio reservado es el mismo
     // → las bolas siempre tienen el mismo tamaño.
     final double rightFixedW = isMobile
-        ? 4 + 30 + 5 + btnSize + 5 + btnSize + 2   // 4+30+5+26+5+26+2 = 98px fijo
+        ? 4 + 30 + 5 + btnSize + 5 + btnSize + 2 // 4+30+5+26+5+26+2 = 98px fijo
         : 0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         // Ancho total disponible dentro del contenedor (descontando padding)
-        final double totalW   = constraints.maxWidth - pad.left - pad.right;
+        final double totalW = constraints.maxWidth - pad.left - pad.right;
 
         // Ancho del label "LÍNEA X" (aprox)
-        final double labelW   = isMobile ? 60.0 : 80.0;
+        final double labelW = isMobile ? 60.0 : 80.0;
         final double gapLabel = 8.0;
 
         // Espacio libre para los círculos
         final double circlesW = totalW - labelW - gapLabel - rightFixedW;
 
         // Número de círculos = balotas + superbalota (si existe)
-        final int nCircles    = balotas.length + (superbalota != null ? 1 : 0);
-        const double gap      = 4.0;
+        final int nCircles = balotas.length + (superbalota != null ? 1 : 0);
+        const double gap = 4.0;
 
         // Tamaño de cada círculo: llena el espacio, máx 30px en móvil / 30px desktop
-        final double maxSz    = isMobile ? 30.0 : 30.0;
-        final double calcSz   = nCircles > 0
-            ? (circlesW - gap * (nCircles - 1)) / nCircles
-            : maxSz;
-        final double numSz    = calcSz.clamp(14.0, maxSz);
-        final double fontSz   = (numSz * 0.42).clamp(8.0, 14.0);
+        final double maxSz = isMobile ? 30.0 : 30.0;
+        final double calcSz =
+            nCircles > 0 ? (circlesW - gap * (nCircles - 1)) / nCircles : maxSz;
+        final double numSz = calcSz.clamp(14.0, maxSz);
+        final double fontSz = (numSz * 0.42).clamp(8.0, 14.0);
 
         return Container(
           width: double.infinity,
@@ -1394,13 +1398,19 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
               // Círculos — tamaño calculado, sin scroll
               ...balotas.map((n) => Padding(
                     padding: const EdgeInsets.only(right: 4),
-                    child: _NumCircle(numero: n, isSuper: false,
-                        size: numSz, fontSize: fontSz),
+                    child: _NumCircle(
+                        numero: n,
+                        isSuper: false,
+                        size: numSz,
+                        fontSize: fontSz),
                   )),
               if (superbalota != null) ...[
                 const SizedBox(width: 4),
-                _NumCircle(numero: superbalota, isSuper: true,
-                    size: numSz, fontSize: fontSz),
+                _NumCircle(
+                    numero: superbalota,
+                    isSuper: true,
+                    size: numSz,
+                    fontSize: fontSz),
               ],
               const Spacer(),
               // Badge BR
@@ -1455,10 +1465,10 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
               ),
               const SizedBox(width: 2),
             ],
-          ),       // Row
-        );         // Container
-      },           // builder
-    );             // LayoutBuilder
+          ), // Row
+        ); // Container
+      }, // builder
+    ); // LayoutBuilder
   }
 
   // ── Botones acción — HU-BAL001 (Limpiar, Automática, Continuar, Cancelar) ─
@@ -1588,8 +1598,8 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
           const SizedBox(height: 12),
           Text(
             '¡Adelanta tus apuestas hasta en 9 sorteos y ahorra tiempo!',
-            style: GoogleFonts.inter(
-                fontSize: 14, color: const Color(0xFF0D2677)),
+            style:
+                GoogleFonts.inter(fontSize: 14, color: const Color(0xFF0D2677)),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 10),
@@ -2583,7 +2593,7 @@ class _BalotoRevanchaScreenState extends State<BalotoRevanchaScreen> {
 
   Widget _buildSuperbalotaGridMobile() {
     return Wrap(
-      spacing: 9,    // column gap (Figma gap-[8px_9px] → col-gap=9)
+      spacing: 9, // column gap (Figma gap-[8px_9px] → col-gap=9)
       runSpacing: 8, // row gap (Figma gap-[8px_9px] → row-gap=8)
       children: List.generate(_kSuperbalotaMax, (i) {
         final n = i + 1;
@@ -2745,8 +2755,8 @@ class _NumCircle extends StatelessWidget {
     this.size = 26,
     this.fontSize,
   });
-  final int    numero;
-  final bool   isSuper;
+  final int numero;
+  final bool isSuper;
   final double size;
   final double? fontSize; // si null, se calcula desde size
 
@@ -2996,8 +3006,7 @@ class _ErrorText extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.cancel_outlined,
-              color: Color(0xFFDC2626), size: 20),
+          const Icon(Icons.cancel_outlined, color: Color(0xFFDC2626), size: 20),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
@@ -3049,7 +3058,8 @@ class _BalotaCircle extends StatelessWidget {
   final bool isSuper;
   final bool detenida;
   final double size;
-  final double fontSize; // false = girando (gris), true = detenida (color final)
+  final double
+      fontSize; // false = girando (gris), true = detenida (color final)
 
   @override
   Widget build(BuildContext context) {
